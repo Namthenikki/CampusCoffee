@@ -13,6 +13,7 @@ type Me = {
   subjects: string[]; studyStyle: string; prompt: { q: string; a: string } | null;
   timetable: boolean[][]; blindOptIn: boolean; openOptIn: boolean; showBranchInBlind: boolean;
   onboarded: boolean;
+  verified: boolean;
 };
 type Pools = { interests: string[]; subjects: string[]; prompts: string[] };
 
@@ -53,7 +54,9 @@ export default function Welcome() {
   useEffect(() => {
     api<{ me: Me; pools: Pools }>("/api/me")
       .then(({ me, pools }) => {
-        if (me.onboarded) router.replace("/today");
+        // Student status comes before anything else — no profile, no browsing.
+        if (!me.verified) router.replace("/verify");
+        else if (me.onboarded) router.replace("/today");
         else { setMe(me); setPools(pools); setStage("wizard"); }
       })
       .catch(() => setStage("email"));
@@ -75,6 +78,19 @@ export default function Welcome() {
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [cooldown]);
+
+  // Sign in with a personal Google account. Student status is proved
+  // separately, by emailing us from the college address (see /verify) —
+  // MUJ blocks inbound mail, so the login can't depend on it.
+  const signInWithGoogle = async () => {
+    setErr("");
+    setBusy(true);
+    const { error } = await supabase().auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) { setBusy(false); setErr(friendly(error.message)); }
+  };
 
   const sendCode = async () => {
     setErr("");
@@ -156,6 +172,15 @@ export default function Welcome() {
         </div>
         <div className="token flex flex-col gap-3 p-5">
           <span className="serial">№ CC-0000 · STUDENTS ONLY</span>
+          <Btn full onClick={signInWithGoogle} disabled={busy}>Continue with Google</Btn>
+          <p className="text-center text-xs text-khaki">
+            You'll prove you're an MUJ student in the next step.
+          </p>
+          <div className="flex items-center gap-3 py-1">
+            <span className="h-px flex-1 bg-line" />
+            <span className="text-xs text-khaki">or use a code</span>
+            <span className="h-px flex-1 bg-line" />
+          </div>
           <div className="flex items-stretch overflow-hidden rounded-xl border border-line bg-bean2">
             <input
               className="min-w-0 flex-1 bg-transparent px-4 py-3 text-crema placeholder:text-khaki/60"

@@ -39,6 +39,8 @@ export interface User {
   bot: boolean;
   createdAt: number;
   onboarded: boolean;
+  /** Proved they're an MUJ student by emailing us from their college address. */
+  verified: boolean;
 }
 
 export type MatchState =

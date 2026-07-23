@@ -16,8 +16,14 @@ function newCode(): string {
   return "CC-" + Array.from(bytes, (b) => ALPHABET[b % ALPHABET.length]).join("");
 }
 
-/** Issues a fresh code, retiring any earlier unused ones for this student. */
-export async function issueCode(userId: string): Promise<{ code: string; expiresAt: number }> {
+/**
+ * Issues a fresh code bound to one specific college address, retiring any
+ * earlier unused ones for this student.
+ */
+export async function issueCode(
+  userId: string,
+  claimedEmail: string,
+): Promise<{ code: string; expiresAt: number }> {
   const db = supabaseAdmin();
   await db.from("verification_codes").delete().eq("user_id", userId).is("used_at", null);
 
@@ -26,6 +32,7 @@ export async function issueCode(userId: string): Promise<{ code: string; expires
   const { error } = await db.from("verification_codes").insert({
     code,
     user_id: userId,
+    claimed_email: claimedEmail.trim().toLowerCase(),
     expires_at: new Date(expiresAt).toISOString(),
   });
   if (error) throw new Error(error.message);
@@ -67,6 +74,11 @@ export async function redeemCode(
   const { data: row } = await db.from("verification_codes").select("*").eq("code", code).maybeSingle();
   if (!row || row.used_at) return record("bad_code");
   if (new Date(row.expires_at as string).getTime() < Date.now()) return record("expired");
+
+  // The code only works from the exact address the student claimed. A code
+  // glimpsed on someone else's screen is worthless without their mailbox.
+  const claimed = (row.claimed_email as string | null)?.toLowerCase();
+  if (claimed && claimed !== from) return record("bad_code");
 
   // One college mailbox, one account — enforced by a unique index, so a race
   // between two signups still can't produce duplicates.

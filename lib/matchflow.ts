@@ -1,36 +1,15 @@
-import { nextSerial, uid } from "./db";
 import { distanceM } from "./geo";
 import { updateReliability } from "./reliability";
 import { applyOutcomeFeedback } from "./matching/coffee";
 import {
-  BLIND_WINDOW_MS, CAFES, CHECKIN_RADIUS_M, CHECKIN_REQUIRED_MS,
-  HONEST_CANCEL_NOTICE_MS, type DB, type Match, type MatchKind,
+  CAFES, CHECKIN_RADIUS_M, CHECKIN_REQUIRED_MS,
+  HONEST_CANCEL_NOTICE_MS, type DB, type Match,
 } from "./types";
 
 // ONE shared module for checkin, decisions, reveal, and reliability — Blind
 // Coffee and Coffee Date both call into this. Never duplicated.
-
-export async function createMatch(db: DB, kind: MatchKind, a: string, b: string): Promise<Match> {
-  const match: Match = {
-    id: uid(),
-    serial: await nextSerial(),
-    kind,
-    users: [a, b],
-    state: "active",
-    createdAt: Date.now(),
-    expiresAt: kind === "blind" ? Date.now() + BLIND_WINDOW_MS : null,
-    slot: null,
-    studySlot: null,
-    decisions: {},
-    cancels: {},
-    checkin: { accumMs: 0, lastCreditAt: 0, pings: {}, success: false },
-    reveal: { photos: {}, outcome: null, votes: {} },
-    mealCount: 0,
-    lastMealAt: null,
-  };
-  db.matches.push(match);
-  return match;
-}
+// Rows are created by lib/data/repo.ts (insertMatch); this file owns the
+// lifecycle logic that runs on them afterwards.
 
 // Blind window rollover: active → decision at expiry.
 export function tickMatch(match: Match): void {

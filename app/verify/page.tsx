@@ -10,107 +10,159 @@ type State = {
   sendTo: string;
   domain: string;
   code: string | null;
+  claimedEmail: string | null;
   expiresAt: number | null;
 };
 
 export default function Verify() {
   const router = useRouter();
   const [s, setS] = useState<State | null>(null);
+  const [local, setLocal] = useState("");
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState<"code" | "address" | null>(null);
+  const [err, setErr] = useState("");
+  const [sent, setSent] = useState(false);
 
   const load = useCallback(async () => {
     const next = await api<State>("/api/verify").catch(() => null);
     if (!next) { router.replace("/welcome"); return; }
-    if (next.verified) { router.replace("/today"); return; }
+    if (next.verified) { router.replace("/"); return; }
     setS(next);
   }, [router]);
 
   useEffect(() => { load(); }, [load]);
 
-  // While they're off in their mail app, keep checking so the screen flips the
-  // moment the email lands — no refresh, no "click here when done".
+  // They're off in their mail app — keep checking so this flips the moment the
+  // email arrives, with nothing to click when they come back.
   useEffect(() => {
-    const t = setInterval(load, 5000);
+    const t = setInterval(load, 4000);
     return () => clearInterval(t);
   }, [load]);
 
-  const getCode = async () => {
+  const claim = async () => {
+    setErr("");
     setBusy(true);
-    await api("/api/verify", { method: "POST" }).catch(() => {});
-    await load();
+    try {
+      await api("/api/verify", { method: "POST", body: JSON.stringify({ local }) });
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Something went wrong");
+    }
     setBusy(false);
-  };
-
-  const copy = (text: string, which: "code" | "address") => {
-    navigator.clipboard?.writeText(text);
-    setCopied(which);
-    setTimeout(() => setCopied(null), 1500);
   };
 
   if (!s) {
     return <main className="flex min-h-dvh items-center justify-center"><p className="serial">CHECKING…</p></main>;
   }
 
+  // ---- Step 1: which college address is yours ----
+  if (!s.code) {
+    return (
+      <main className="flex min-h-dvh flex-col justify-center gap-6 px-6 py-10">
+        <div>
+          <p className="serial">STEP 1 OF 2</p>
+          <h1 className="mt-2 font-display text-4xl font-bold leading-tight">
+            What's your<br /><span className="text-honey">college email?</span>
+          </h1>
+          <p className="mt-3 text-khaki">
+            Campus Coffee is students only. This is how we keep it that way.
+          </p>
+        </div>
+
+        <Token className="flex flex-col gap-3 p-5">
+          <span className="serial">MANIPAL UNIVERSITY JAIPUR</span>
+          <div className="flex items-stretch overflow-hidden rounded-xl border border-line bg-bean2">
+            <input
+              className="min-w-0 flex-1 bg-transparent px-4 py-3 text-crema placeholder:text-khaki/60"
+              placeholder="firstname.regno"
+              autoCapitalize="none"
+              autoCorrect="off"
+              value={local}
+              onChange={(e) => setLocal(e.target.value.split("@")[0].trim())}
+              onKeyDown={(e) => e.key === "Enter" && claim()}
+            />
+            <span className="flex items-center bg-bean px-3 font-mono text-xs text-khaki">@{s.domain}</span>
+          </div>
+          {err && <p className="text-sm text-spice">{err}</p>}
+          <Btn full onClick={claim} disabled={busy || !local}>{busy ? "One moment…" : "Continue"}</Btn>
+        </Token>
+      </main>
+    );
+  }
+
+  // ---- Step 2: why, then one tap to a pre-written email ----
+  const subject = `Campus Coffee verification ${s.code}`;
+  const body =
+    `${s.code}\n\n` +
+    `Sending this from my college account to verify I'm a student at ${s.domain}.\n` +
+    `Nothing else in this email is read.`;
+  const mailto = `mailto:${s.sendTo}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const outlookWeb =
+    `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(s.sendTo)}` +
+    `&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
   return (
-    <main className="flex min-h-dvh flex-col justify-center gap-6 px-6 py-10">
+    <main className="flex min-h-dvh flex-col justify-center gap-5 px-6 py-10">
       <div>
-        <p className="serial">ONE STEP LEFT</p>
-        <h1 className="mt-2 font-display text-4xl font-bold leading-tight">
-          Prove you're a<br /><span className="text-honey">student</span>
+        <p className="serial">STEP 2 OF 2</p>
+        <h1 className="mt-2 font-display text-3xl font-bold leading-tight">
+          Send one email.<br />That's it.
         </h1>
-        <p className="mt-3 text-khaki">
-          Send one email from your college account. That's the whole check — we read the
-          sender address, not the message.
-        </p>
       </div>
 
-      {!s.code ? (
-        <Token className="p-5">
-          <p className="mb-3 text-sm text-khaki">Get your code, then send it from your college mail.</p>
-          <Btn full onClick={getCode} disabled={busy}>{busy ? "Getting your code…" : "Get my code"}</Btn>
-        </Token>
+      <Token className="p-5">
+        <p className="font-display font-bold">Why we ask</p>
+        <p className="mt-2 text-sm leading-relaxed text-khaki">
+          People meet up in real life through Campus Coffee, so everyone here has to be a real
+          student. Anyone can type an email address — but only you can{" "}
+          <span className="text-crema">send</span> from your college account. That's what makes
+          catfishing impossible here.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-khaki">
+          We check the sender address and nothing else. The message body is never read or stored.
+        </p>
+      </Token>
+
+      <Token className="flex flex-col gap-3 p-5">
+        <span className="serial">EVERYTHING IS PRE-WRITTEN</span>
+        <div className="rounded-xl border border-line bg-bean2 p-3 text-sm">
+          <p className="text-khaki">To</p>
+          <p className="font-mono text-[13px] text-crema">{s.sendTo}</p>
+          <p className="mt-2 text-khaki">Subject</p>
+          <p className="font-mono text-[13px] text-crema">{subject}</p>
+        </div>
+
+        <a href={mailto} onClick={() => setSent(true)} className="press block rounded-xl bg-honey py-3 text-center font-semibold text-cream">
+          Open my mail app &amp; send
+        </a>
+        <a
+          href={outlookWeb}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => setSent(true)}
+          className="press block rounded-xl border border-line bg-bean py-3 text-center text-sm font-semibold text-crema"
+        >
+          Open Outlook on the web
+        </a>
+
+        <p className="text-center text-xs text-khaki">
+          Send it from <span className="text-crema">{s.claimedEmail}</span> — it only works from that account.
+        </p>
+      </Token>
+
+      {sent ? (
+        <div className="flex items-center justify-center gap-2 text-sm text-khaki">
+          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-matcha" />
+          Waiting for your email… this page updates on its own.
+        </div>
       ) : (
-        <Token className="flex flex-col gap-4 p-5">
-          <div>
-            <p className="serial mb-1">STEP 1 · SEND TO</p>
-            <button
-              className="press flex w-full items-center justify-between rounded-xl border border-line bg-bean2 px-4 py-3 text-left"
-              onClick={() => copy(s.sendTo, "address")}
-            >
-              <span className="font-mono text-sm">{s.sendTo}</span>
-              <span className="text-xs text-khaki">{copied === "address" ? "copied" : "tap to copy"}</span>
-            </button>
-          </div>
-
-          <div>
-            <p className="serial mb-1">STEP 2 · SUBJECT OR BODY</p>
-            <button
-              className="press flex w-full items-center justify-between rounded-xl border border-line bg-bean2 px-4 py-3 text-left"
-              onClick={() => copy(s.code!, "code")}
-            >
-              <span className="font-mono text-xl font-bold tracking-widest text-honey">{s.code}</span>
-              <span className="text-xs text-khaki">{copied === "code" ? "copied" : "tap to copy"}</span>
-            </button>
-          </div>
-
-          <a
-            href={`mailto:${s.sendTo}?subject=${encodeURIComponent(s.code)}&body=${encodeURIComponent(s.code)}`}
-            className="press block rounded-xl bg-honey py-3 text-center font-semibold text-cream"
-          >
-            Open my mail app
-          </a>
-
-          <p className="text-center text-xs text-khaki">
-            Must be sent from your <span className="text-crema">@{s.domain}</span> account.
-            This page updates by itself the moment it arrives.
-          </p>
-        </Token>
+        <p className="text-center text-xs text-khaki">
+          This page updates by itself once your email arrives — no need to come back and click anything.
+        </p>
       )}
 
-      <p className="text-center text-xs text-khaki">
-        We only ever check that the sender is a college address. Nothing else in the email is read or stored.
-      </p>
+      <button className="press text-center text-xs text-khaki underline underline-offset-4" onClick={() => { setLocal(""); setS({ ...s, code: null }); }}>
+        Wrong address? Start over
+      </button>
     </main>
   );
 }

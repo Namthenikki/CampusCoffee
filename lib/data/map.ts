@@ -39,6 +39,7 @@ export function rowToUser(row: Row, email: string): User {
     bot: !!row.bot,
     createdAt: row.created_at ? new Date(row.created_at as string).getTime() : Date.now(),
     onboarded: !!row.onboarded,
+    verified: !!row.verified,
   };
 }
 
