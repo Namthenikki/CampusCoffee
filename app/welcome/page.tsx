@@ -32,7 +32,10 @@ function friendly(msg: string): string {
 
 export default function Welcome() {
   const router = useRouter();
-  const supabase = useRef(supabaseBrowser());
+  // Built on first use, in the browser only. Constructing it during render
+  // would run at prerender time on the server, where no keys exist.
+  const supabaseRef = useRef<ReturnType<typeof supabaseBrowser> | null>(null);
+  const supabase = () => (supabaseRef.current ??= supabaseBrowser());
   const [stage, setStage] = useState<"loading" | "email" | "otp" | "wizard">("loading");
   const [step, setStep] = useState(0);
   const [local, setLocal] = useState("");
@@ -80,7 +83,7 @@ export default function Welcome() {
       return;
     }
     setBusy(true);
-    const { error } = await supabase.current.auth.signInWithOtp({
+    const { error } = await supabase().auth.signInWithOtp({
       email,
       options: { shouldCreateUser: true },
     });
@@ -97,7 +100,7 @@ export default function Welcome() {
     if (t.length < 6 || busy) return;
     setErr("");
     setBusy(true);
-    const { error } = await supabase.current.auth.verifyOtp({ email, token: t, type: "email" });
+    const { error } = await supabase().auth.verifyOtp({ email, token: t, type: "email" });
     if (error) { setBusy(false); setErr(friendly(error.message)); return; }
     const { me, pools } = await api<{ me: Me; pools: Pools }>("/api/me");
     setBusy(false);
