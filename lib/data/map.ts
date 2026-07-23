@@ -16,6 +16,7 @@ export function rowToUser(row: Row, email: string): User {
     name: row.name as string,
     fullName: (row.full_name as string) ?? "",
     bio: (row.bio as string) ?? "",
+    dob: (row.dob as string) ?? null,
     gender: row.gender as User["gender"],
     branch: row.branch as string,
     year: row.year as number,
@@ -47,6 +48,7 @@ export function rowToUser(row: Row, email: string): User {
 const EDITABLE: Record<string, string> = {
   fullName: "full_name",
   bio: "bio",
+  dob: "dob",
   gender: "gender",
   branch: "branch",
   year: "year",

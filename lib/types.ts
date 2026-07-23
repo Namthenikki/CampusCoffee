@@ -19,6 +19,7 @@ export interface User {
   name: string;
   fullName: string;
   bio: string;
+  dob: string | null; // ISO date; age is derived, the date itself stays private
   gender: Gender;
   branch: string;
   year: number;

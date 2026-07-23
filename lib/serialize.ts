@@ -11,6 +11,7 @@ export interface PublicUser {
   year: number | null;
   fullName: string;
   bio: string;
+  age: number | null;
   diet: User["diet"];
   messSlot: User["messSlot"];
   mealFreq: number;
@@ -19,6 +20,18 @@ export interface PublicUser {
   studyStyle: User["studyStyle"];
   prompt: { q: string; a: string } | null;
   anonymous: boolean;
+}
+
+// Age, not birthday. Nobody needs the exact date of someone they haven't met.
+function ageFrom(dob: string | null): number | null {
+  if (!dob) return null;
+  const born = new Date(dob);
+  if (Number.isNaN(born.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - born.getFullYear();
+  const m = now.getMonth() - born.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < born.getDate())) age -= 1;
+  return age;
 }
 
 export function publicUser(u: User, opts?: { anonymous?: boolean }): PublicUser {
@@ -32,6 +45,7 @@ export function publicUser(u: User, opts?: { anonymous?: boolean }): PublicUser 
     // the kind of detail that would give them away.
     fullName: anon ? "" : u.fullName,
     bio: anon ? "" : u.bio,
+    age: ageFrom(u.dob),
     diet: u.diet,
     messSlot: u.messSlot,
     mealFreq: u.mealFreq,

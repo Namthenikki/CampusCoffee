@@ -9,7 +9,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { BRANCHES, SLOTS_PER_DAY } from "@/lib/types";
 
 type Me = {
-  name: string; fullName: string; bio: string; gender: string; branch: string; year: number;
+  name: string; fullName: string; bio: string; dob: string | null; gender: string; branch: string; year: number;
   diet: string; messSlot: string; mealFreq: number; interests: string[];
   subjects: string[]; studyStyle: string; prompt: { q: string; a: string } | null;
   timetable: boolean[][]; blindOptIn: boolean; openOptIn: boolean; showBranchInBlind: boolean;
@@ -194,6 +194,20 @@ export default function Welcome() {
           </div>
 
           <div>
+            <label className="text-sm text-khaki">Date of birth</label>
+            <input
+              type="date"
+              className="mt-1 w-full rounded-xl border border-line bg-bean2 px-4 py-3 text-crema focus:border-honey/60"
+              value={me.dob ?? ""}
+              max={new Date(Date.now() - 16 * 365.25 * 864e5).toISOString().slice(0, 10)}
+              onChange={(e) => patch({ dob: e.target.value || null })}
+            />
+            <p className="mt-1.5 text-xs text-sediment">
+              Others only ever see your age, never the date.
+            </p>
+          </div>
+
+          <div>
             <div className="flex items-baseline justify-between">
               <label className="text-sm text-khaki">Say something about yourself</label>
               <span className={`font-mono text-[11px] ${me.bio.length > 230 ? "text-spice-pastel" : "text-sediment"}`}>
@@ -359,7 +373,7 @@ export default function Welcome() {
       <div className="mt-auto flex gap-3 pt-4">
         {step > 0 && <Btn variant="ghost" onClick={() => setStep(step - 1)}>Back</Btn>}
         {step < STEPS.length - 1 ? (
-          <Btn full onClick={() => setStep(step + 1)} disabled={step === 0 && (!me.fullName.trim() || !me.branch.trim())}>Next</Btn>
+          <Btn full onClick={() => setStep(step + 1)} disabled={step === 0 && (!me.fullName.trim() || !me.branch.trim() || !me.dob)}>Next</Btn>
         ) : (
           <Btn full onClick={finish}>Stamp my token ☕</Btn>
         )}
