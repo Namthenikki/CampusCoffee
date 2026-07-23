@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// Each feature answers in its own drink (COLOR-RESEARCH: one family per screen).
 const TABS = [
-  { href: "/today", label: "Today", icon: "☕" },
-  { href: "/mess", label: "Mess", icon: "🍛" },
-  { href: "/library", label: "Library", icon: "📚" },
-  { href: "/coffee", label: "Coffee", icon: "🫖" },
-  { href: "/chats", label: "Chats", icon: "💬" },
+  { href: "/today", label: "Today", icon: "☕", active: "text-crema" },
+  { href: "/mess", label: "Mess", icon: "🍛", active: "text-butter" },
+  { href: "/library", label: "Library", icon: "📚", active: "text-matcha-pastel" },
+  { href: "/coffee", label: "Coffee", icon: "🫖", active: "text-rosemilk-pastel" },
+  { href: "/chats", label: "Chats", icon: "💬", active: "text-crema" },
 ];
 
 export default function TabBar() {
@@ -23,7 +24,7 @@ export default function TabBar() {
               key={t.href}
               href={t.href}
               className={`press flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold ${
-                active ? "text-honey" : "text-khaki"
+                active ? t.active : "text-sediment"
               }`}
             >
               <span className="text-lg leading-none" aria-hidden>{t.icon}</span>

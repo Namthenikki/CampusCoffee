@@ -12,10 +12,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbf6ee" },
-    { media: "(prefers-color-scheme: dark)", color: "#1a1516" },
-  ],
+  // The app commits to the dark roast — one world, both OS themes.
+  themeColor: "#1a1310",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

@@ -7,7 +7,7 @@ export function Btn({
 }: {
   children: ReactNode;
   onClick?: () => void;
-  variant?: "primary" | "ghost" | "spice" | "quiet";
+  variant?: "primary" | "ghost" | "spice" | "rosemilk" | "quiet";
   disabled?: boolean;
   full?: boolean;
   small?: boolean;
@@ -19,6 +19,7 @@ export function Btn({
   const styles = {
     primary: "bg-honey text-cream",
     spice: "bg-spice text-cream",
+    rosemilk: "bg-rosemilk text-cream",
     ghost: "border border-line bg-bean text-crema",
     quiet: "text-khaki underline-offset-4 underline",
   }[variant];
@@ -29,24 +30,33 @@ export function Btn({
   );
 }
 
-export function Chip({ children, tone = "line" }: { children: ReactNode; tone?: "line" | "honey" | "spice" | "matcha" }) {
+export function Chip({ children, tone = "line" }: { children: ReactNode; tone?: "line" | "honey" | "spice" | "matcha" | "rosemilk" }) {
+  // Pastels carry text/outlines on the roast (COLOR-RESEARCH: pastel ≥9.7:1).
   const tones = {
     line: "border-line text-khaki",
-    honey: "border-honey/50 text-honey",
-    spice: "border-spice/50 text-spice",
-    matcha: "border-matcha/50 text-matcha",
+    honey: "border-honey/60 text-butter",
+    spice: "border-spice/60 text-spice-pastel",
+    matcha: "border-matcha/60 text-matcha-pastel",
+    rosemilk: "border-rosemilk/60 text-rosemilk-pastel",
   }[tone];
   return (
     <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs ${tones}`}>{children}</span>
   );
 }
 
-export function Stamp({ children, tone = "honey" }: { children: ReactNode; tone?: "honey" | "spice" | "matcha" | "khaki" }) {
-  const color = { honey: "text-honey", spice: "text-spice", matcha: "text-matcha", khaki: "text-khaki" }[tone];
+export function Stamp({ children, tone = "honey" }: { children: ReactNode; tone?: "honey" | "spice" | "matcha" | "rosemilk" | "khaki" }) {
+  const color = {
+    honey: "text-butter",
+    spice: "text-spice-pastel",
+    matcha: "text-matcha-pastel",
+    rosemilk: "text-rosemilk-pastel",
+    khaki: "text-khaki",
+  }[tone];
   return <span className={`stamp ${color}`}>{children}</span>;
 }
 
-const AVATAR_TONES = ["#d6303f", "#ebae3c", "#4f8a5e", "#e07856", "#c9445a", "#d98a3c"];
+// Drink tones only — every one carries ink text at ≥5.2:1.
+const AVATAR_TONES = ["#e89aab", "#dba55e", "#a9c98f", "#e06a50", "#f5c1cb", "#f0ce9a"];
 export function Avatar({ name, anonymous, size = 44 }: { name: string; anonymous?: boolean; size?: number }) {
   const hash = [...name].reduce((a, c) => a + c.charCodeAt(0), 0);
   const bg = AVATAR_TONES[hash % AVATAR_TONES.length];

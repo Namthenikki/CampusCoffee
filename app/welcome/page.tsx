@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TimetableGrid from "@/components/TimetableGrid";
 import { api, Btn, Chip, Seg } from "@/components/ui";
+import { TokenMark } from "@/components/Logo";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { BRANCHES, HOSTELS, SLOTS_PER_DAY } from "@/lib/types";
 
@@ -17,9 +18,22 @@ type Me = {
 };
 type Pools = { interests: string[]; subjects: string[]; prompts: string[] };
 
-const DOMAIN = process.env.NEXT_PUBLIC_EMAIL_DOMAIN ?? "muj.manipal.edu";
-const OTP_MAX = 8; // Supabase codes are 6–8 digits depending on project settings
 const STEPS = ["you", "mess", "interests", "study", "timetable", "coffee"] as const;
+
+// Each wizard step answers in its feature's drink (COLOR-RESEARCH: one family per screen).
+const STEP_FILL: Record<(typeof STEPS)[number], string> = {
+  you: "bg-honey", mess: "bg-honey", interests: "bg-honey",
+  study: "bg-matcha", timetable: "bg-matcha", coffee: "bg-rosemilk",
+};
+
+// The menu strip: the four features, shown as stamp dots — accents stay inside
+// token devices on mixed screens.
+const MENU = [
+  { dot: "bg-honey", label: "MESS" },
+  { dot: "bg-matcha", label: "LIBRARY" },
+  { dot: "bg-rosemilk", label: "BLIND COFFEE" },
+  { dot: "bg-spice", label: "DATE" },
+];
 
 // Supabase speaks in API errors; students shouldn't have to.
 function friendly(msg: string): string {
@@ -37,18 +51,12 @@ export default function Welcome() {
   // would run at prerender time on the server, where no keys exist.
   const supabaseRef = useRef<ReturnType<typeof supabaseBrowser> | null>(null);
   const supabase = () => (supabaseRef.current ??= supabaseBrowser());
-  const [stage, setStage] = useState<"loading" | "email" | "otp" | "wizard">("loading");
+  const [stage, setStage] = useState<"loading" | "email" | "wizard">("loading");
   const [step, setStep] = useState(0);
-  const [local, setLocal] = useState("");
-  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
   const [err, setErr] = useState("");
-  const triedCode = useRef("");
   const [me, setMe] = useState<Me | null>(null);
   const [pools, setPools] = useState<Pools>({ interests: [], subjects: [], prompts: [] });
-
-  const email = `${local.trim().toLowerCase()}@${DOMAIN}`;
 
   // Already signed in? Skip straight to onboarding or home.
   useEffect(() => {
@@ -71,14 +79,6 @@ export default function Welcome() {
     }
   }, []);
 
-  // Resend cooldown ticker — Supabase throttles code requests, so the button
-  // tells you when it's ready instead of erroring after the fact.
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [cooldown]);
-
   // Sign in with a personal Google account. Student status is proved
   // separately, by emailing us from the college address (see /verify) —
   // MUJ blocks inbound mail, so the login can't depend on it.
@@ -91,49 +91,6 @@ export default function Welcome() {
     });
     if (error) { setBusy(false); setErr(friendly(error.message)); }
   };
-
-  const sendCode = async () => {
-    setErr("");
-    if (!/^[a-z0-9][a-z0-9._-]*$/i.test(local.trim())) {
-      setErr("Enter the part of your college email before the @");
-      return;
-    }
-    setBusy(true);
-    const { error } = await supabase().auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true },
-    });
-    setBusy(false);
-    if (error) { setErr(friendly(error.message)); return; }
-    setCode("");
-    triedCode.current = "";
-    setCooldown(45);
-    setStage("otp");
-  };
-
-  const verify = async (token = code) => {
-    const t = token.trim();
-    if (t.length < 6 || busy) return;
-    setErr("");
-    setBusy(true);
-    const { error } = await supabase().auth.verifyOtp({ email, token: t, type: "email" });
-    if (error) { setBusy(false); setErr(friendly(error.message)); return; }
-    const { me, pools } = await api<{ me: Me; pools: Pools }>("/api/me");
-    setBusy(false);
-    if (me.onboarded) { router.replace("/today"); return; }
-    setMe(me); setPools(pools); setStage("wizard");
-  };
-
-  // Submit as soon as the sixth digit lands — no extra tap.
-  useEffect(() => {
-    // Supabase OTP length varies by project setting (6 or 8), so submit only
-    // when the field is full; shorter codes go via the Verify button.
-    if (stage === "otp" && code.length === OTP_MAX && triedCode.current !== code) {
-      triedCode.current = code;
-      verify(code);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, stage]);
 
   const patch = (p: Partial<Me>) => setMe((m) => (m ? { ...m, ...p } : m));
   const toggleIn = (key: "interests" | "subjects", v: string, max: number) => {
@@ -159,85 +116,37 @@ export default function Welcome() {
 
   if (stage === "email") {
     return (
-      <main className="flex min-h-dvh flex-col justify-center gap-6 px-6">
-        <div>
-          <div className="steam font-display text-xl text-khaki" aria-hidden><span>(</span><span>(</span><span>(</span></div>
-          <h1 className="font-display text-5xl font-bold leading-tight">
-            Campus<br /><span className="text-honey">Coffee</span>
+      <main className="flex min-h-dvh flex-col justify-center gap-7 px-6 py-10">
+        <div className="pour-in">
+          <TokenMark size={56} variant="ghost" className="mb-4" />
+          <h1 className="font-display text-[52px] font-bold leading-[0.95] tracking-tight">
+            Campus<br /><span className="text-butter">Coffee</span>
           </h1>
-          <p className="mt-3 text-khaki">
-            Mess partners. Study partners. Blind coffee.
-            <br /><span className="font-semibold text-crema">No swiping. Ever.</span>
+          <p className="mt-4 max-w-[32ch] text-[15px] leading-relaxed text-khaki">
+            Someone to eat with. Someone to study with. Someone to meet.
+            <br />
+            <span className="font-semibold text-crema">No swiping. Ever.</span>
           </p>
-        </div>
-        <div className="token flex flex-col gap-3 p-5">
-          <span className="serial">№ CC-0000 · STUDENTS ONLY</span>
-          <Btn full onClick={signInWithGoogle} disabled={busy}>Continue with Google</Btn>
-          <p className="text-center text-xs text-khaki">
-            You'll prove you're an MUJ student in the next step.
-          </p>
-          <div className="flex items-center gap-3 py-1">
-            <span className="h-px flex-1 bg-line" />
-            <span className="text-xs text-khaki">or use a code</span>
-            <span className="h-px flex-1 bg-line" />
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {MENU.map((m) => (
+              <span key={m.label} className="flex items-center gap-1.5">
+                <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} aria-hidden />
+                <span className="font-mono text-[10px] tracking-[0.18em] text-crema">{m.label}</span>
+              </span>
+            ))}
           </div>
-          <div className="flex items-stretch overflow-hidden rounded-xl border border-line bg-bean2">
-            <input
-              className="min-w-0 flex-1 bg-transparent px-4 py-3 text-crema placeholder:text-khaki/60"
-              placeholder="firstname.regno"
-              autoCapitalize="none"
-              autoCorrect="off"
-              value={local}
-              onChange={(e) => setLocal(e.target.value.split("@")[0].trim())}
-              onKeyDown={(e) => e.key === "Enter" && sendCode()}
-            />
-            <span className="flex items-center bg-bean px-3 font-mono text-xs text-khaki">@{DOMAIN}</span>
-          </div>
-          {err && <p className="text-sm text-spice">{err}</p>}
-          <Btn full onClick={sendCode} disabled={busy}>{busy ? "Sending…" : "Send me a code"}</Btn>
         </div>
-        <p className="text-center text-xs text-khaki">
-          We only send a code to your college inbox — that's how we keep it students-only.
-        </p>
-      </main>
-    );
-  }
 
-  if (stage === "otp") {
-    return (
-      <main className="flex min-h-dvh flex-col justify-center gap-6 px-6">
-        <div>
-          <h1 className="font-display text-4xl font-bold">Check your inbox ☕</h1>
-          <p className="mt-2 text-khaki">
-            We sent a code to <span className="text-crema">{email}</span>. It's good for a few minutes.
-          </p>
-        </div>
-        <div className="token flex flex-col gap-3 p-5">
-          <span className="serial">ENTER YOUR CODE</span>
-          <input
-            className="rounded-xl border border-line bg-bean2 px-4 py-3 text-center font-mono text-2xl tracking-[0.35em] text-crema placeholder:text-khaki/40"
-            placeholder="••••••"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={OTP_MAX}
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-            onKeyDown={(e) => e.key === "Enter" && verify()}
-          />
-          {err && <p className="text-sm text-spice">{err}</p>}
-          <Btn full onClick={() => verify()} disabled={busy || code.length < 6}>{busy ? "Verifying…" : "Verify & enter"}</Btn>
-          <div className="flex justify-between text-xs text-khaki">
-            <button className="press underline underline-offset-4" onClick={() => { setStage("email"); setCode(""); setErr(""); }}>
-              Change email
-            </button>
-            <button
-              className="press underline underline-offset-4 disabled:no-underline disabled:opacity-50"
-              onClick={sendCode}
-              disabled={busy || cooldown > 0}
-            >
-              {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
-            </button>
+        <div className="token pour-in flex flex-col gap-3 p-5" style={{ animationDelay: "120ms" }}>
+          <div className="flex items-center justify-between">
+            <span className="serial">№ CC-0000</span>
+            <span className="stamp text-butter">Students only</span>
           </div>
+          <Btn full onClick={signInWithGoogle} disabled={busy}>Continue with Google</Btn>
+          {err && <p className="text-center text-sm text-spice-pastel">{err}</p>}
+          <p className="text-center text-xs text-sediment">
+            You&apos;ll prove you&apos;re an MUJ student in the next step.
+          </p>
         </div>
       </main>
     );
@@ -245,24 +154,25 @@ export default function Welcome() {
 
   if (!me) return null;
   const pct = Math.round(((step + 1) / STEPS.length) * 100);
+  const fill = STEP_FILL[STEPS[step]];
 
   return (
     <main className="flex min-h-dvh flex-col gap-5 px-5 py-8">
       <div>
-        <div className="mb-1 flex justify-between font-mono text-[10px] uppercase tracking-widest text-khaki">
+        <div className="mb-1.5 flex justify-between font-mono text-[10px] uppercase tracking-[0.18em] text-sediment">
           <span>Brewing your profile</span><span>{pct}%</span>
         </div>
         <div className="h-1.5 rounded-full bg-bean2">
-          <div className="h-full rounded-full bg-honey transition-all" style={{ width: `${pct}%` }} />
+          <div className={`h-full rounded-full transition-all ${fill}`} style={{ width: `${pct}%` }} />
         </div>
       </div>
 
       {STEPS[step] === "you" && (
         <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl font-bold">Who's ordering?</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight">Who&apos;s ordering?</h2>
           <label className="text-sm text-khaki">Your name (what partners will see)</label>
           <input
-            className="rounded-xl border border-line bg-bean2 px-4 py-3 text-crema placeholder:text-khaki/60"
+            className="rounded-xl border border-line bg-bean2 px-4 py-3 text-crema placeholder:text-sediment"
             placeholder="First name"
             value={me.name}
             onChange={(e) => patch({ name: e.target.value })}
@@ -305,7 +215,7 @@ export default function Welcome() {
 
       {STEPS[step] === "mess" && (
         <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl font-bold">Mess rules</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight">Mess rules</h2>
           <label className="text-sm text-khaki">Plate politics</label>
           <Seg
             options={[{ value: "veg", label: "Veg" }, { value: "egg", label: "Egg" }, { value: "nonveg", label: "Non-veg" }]}
@@ -316,14 +226,14 @@ export default function Welcome() {
             options={[{ value: "early", label: "Early bird" }, { value: "mid", label: "Regular" }, { value: "late", label: "Last call" }]}
             value={me.messSlot as "mid"} onChange={(v) => patch({ messSlot: v })}
           />
-          <label className="text-sm text-khaki">Mess meals per week: <span className="font-mono text-honey">{me.mealFreq}</span></label>
+          <label className="text-sm text-khaki">Mess meals per week: <span className="font-mono text-butter">{me.mealFreq}</span></label>
           <input type="range" min={0} max={21} value={me.mealFreq} onChange={(e) => patch({ mealFreq: Number(e.target.value) })} className="accent-honey" />
         </section>
       )}
 
       {STEPS[step] === "interests" && (
         <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl font-bold">What are you into?</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight">What are you into?</h2>
           <p className="text-sm text-khaki">Pick 3–6. These drive who you meet.</p>
           <div className="flex flex-wrap gap-2">
             {pools.interests.map((i) => (
@@ -337,12 +247,12 @@ export default function Welcome() {
 
       {STEPS[step] === "study" && (
         <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl font-bold">Study mode</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight">Study mode</h2>
           <label className="text-sm text-khaki">Subjects this sem (pick up to 4)</label>
           <div className="flex flex-wrap gap-2">
             {pools.subjects.map((s) => (
               <button key={s} onClick={() => toggleIn("subjects", s, 4)} className="press">
-                <Chip tone={me.subjects.includes(s) ? "honey" : "line"}>{s}</Chip>
+                <Chip tone={me.subjects.includes(s) ? "matcha" : "line"}>{s}</Chip>
               </button>
             ))}
           </div>
@@ -356,7 +266,7 @@ export default function Welcome() {
 
       {STEPS[step] === "timetable" && (
         <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl font-bold">Your free hours</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight">Your free hours</h2>
           <p className="text-sm text-khaki">
             Honest input = better study partners. We only show people whose free time actually overlaps yours.
           </p>
@@ -369,26 +279,26 @@ export default function Welcome() {
 
       {STEPS[step] === "coffee" && (
         <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl font-bold">The coffee side ☕</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight">The coffee side</h2>
           <p className="text-sm text-khaki">Both optional. Both leave-able anytime.</p>
-          <button className="token press flex items-center justify-between p-4 text-left" onClick={() => patch({ blindOptIn: !me.blindOptIn })}>
+          <button className="token press flex items-center justify-between gap-3 p-4 text-left" onClick={() => patch({ blindOptIn: !me.blindOptIn })}>
             <div>
-              <p className="font-display font-bold">Blind Coffee</p>
-              <p className="text-sm text-khaki">Anonymous. 48 hours of chat, then decide. No photos till you've met.</p>
+              <p className="font-display font-bold text-rosemilk-pastel">Blind Coffee</p>
+              <p className="mt-0.5 text-sm text-khaki">Anonymous. 48 hours of chat, then decide. No photos till you&apos;ve met.</p>
             </div>
-            <Chip tone={me.blindOptIn ? "spice" : "line"}>{me.blindOptIn ? "IN" : "OUT"}</Chip>
+            <Chip tone={me.blindOptIn ? "rosemilk" : "line"}>{me.blindOptIn ? "IN" : "OUT"}</Chip>
           </button>
-          <button className="token press flex items-center justify-between p-4 text-left" onClick={() => patch({ openOptIn: !me.openOptIn })}>
+          <button className="token press flex items-center justify-between gap-3 p-4 text-left" onClick={() => patch({ openOptIn: !me.openOptIn })}>
             <div>
-              <p className="font-display font-bold">Coffee Date</p>
-              <p className="text-sm text-khaki">The regular version — profiles visible from the start.</p>
+              <p className="font-display font-bold text-spice-pastel">Coffee Date</p>
+              <p className="mt-0.5 text-sm text-khaki">The regular version — profiles visible from the start.</p>
             </div>
             <Chip tone={me.openOptIn ? "spice" : "line"}>{me.openOptIn ? "IN" : "OUT"}</Chip>
           </button>
           {me.blindOptIn && (
             <button className="press flex items-center justify-between rounded-xl border border-line bg-bean px-4 py-3 text-left text-sm" onClick={() => patch({ showBranchInBlind: !me.showBranchInBlind })}>
               <span className="text-khaki">Show my branch while anonymous</span>
-              <Chip tone={me.showBranchInBlind ? "honey" : "line"}>{me.showBranchInBlind ? "Yes" : "No"}</Chip>
+              <Chip tone={me.showBranchInBlind ? "rosemilk" : "line"}>{me.showBranchInBlind ? "Yes" : "No"}</Chip>
             </button>
           )}
           <label className="text-sm text-khaki">One prompt (dating cards only)</label>
@@ -400,7 +310,7 @@ export default function Welcome() {
             {pools.prompts.map((p) => <option key={p}>{p}</option>)}
           </select>
           <input
-            className="rounded-xl border border-line bg-bean2 px-4 py-3 text-crema placeholder:text-khaki/60"
+            className="rounded-xl border border-line bg-bean2 px-4 py-3 text-crema placeholder:text-sediment"
             placeholder="Your answer…" maxLength={80}
             value={me.prompt?.a ?? ""}
             onChange={(e) => patch({ prompt: { q: me.prompt?.q ?? pools.prompts[0], a: e.target.value } })}

@@ -60,19 +60,22 @@ export default function Verify() {
       <main className="flex min-h-dvh flex-col justify-center gap-6 px-6 py-10">
         <div>
           <p className="serial">STEP 1 OF 2</p>
-          <h1 className="mt-2 font-display text-4xl font-bold leading-tight">
-            What's your<br /><span className="text-honey">college email?</span>
+          <h1 className="mt-2 font-display text-4xl font-bold leading-[1.05] tracking-tight">
+            What&apos;s your<br /><span className="text-butter">college email?</span>
           </h1>
-          <p className="mt-3 text-khaki">
+          <p className="mt-3 max-w-[34ch] leading-relaxed text-khaki">
             Campus Coffee is students only. This is how we keep it that way.
           </p>
         </div>
 
-        <Token className="flex flex-col gap-3 p-5">
-          <span className="serial">MANIPAL UNIVERSITY JAIPUR</span>
-          <div className="flex items-stretch overflow-hidden rounded-xl border border-line bg-bean2">
+        <Token className="pour-in flex flex-col gap-3 p-5">
+          <div className="flex items-center justify-between">
+            <span className="serial">MANIPAL UNIVERSITY JAIPUR</span>
+            <span className="stamp text-butter">Students only</span>
+          </div>
+          <div className="flex items-stretch overflow-hidden rounded-xl border border-line bg-bean2 focus-within:border-honey/60">
             <input
-              className="min-w-0 flex-1 bg-transparent px-4 py-3 text-crema placeholder:text-khaki/60"
+              className="min-w-0 flex-1 bg-transparent px-4 py-3 text-crema placeholder:text-sediment"
               placeholder="firstname.regno"
               autoCapitalize="none"
               autoCorrect="off"
@@ -80,9 +83,9 @@ export default function Verify() {
               onChange={(e) => setLocal(e.target.value.split("@")[0].trim())}
               onKeyDown={(e) => e.key === "Enter" && claim()}
             />
-            <span className="flex items-center bg-bean px-3 font-mono text-xs text-khaki">@{s.domain}</span>
+            <span className="flex items-center border-l border-line bg-bean px-3 font-mono text-[13px] text-crema">@{s.domain}</span>
           </div>
-          {err && <p className="text-sm text-spice">{err}</p>}
+          {err && <p className="text-sm text-spice-pastel">{err}</p>}
           <Btn full onClick={claim} disabled={busy || !local}>{busy ? "One moment…" : "Continue"}</Btn>
         </Token>
       </main>
@@ -104,8 +107,8 @@ export default function Verify() {
     <main className="flex min-h-dvh flex-col justify-center gap-5 px-6 py-10">
       <div>
         <p className="serial">STEP 2 OF 2</p>
-        <h1 className="mt-2 font-display text-3xl font-bold leading-tight">
-          Send one email.<br />That's it.
+        <h1 className="mt-2 font-display text-4xl font-bold leading-[1.05] tracking-tight">
+          Send one email.<br />That&apos;s it.
         </h1>
       </div>
 
@@ -114,7 +117,7 @@ export default function Verify() {
         <p className="mt-2 text-sm leading-relaxed text-khaki">
           People meet up in real life through Campus Coffee, so everyone here has to be a real
           student. Anyone can type an email address — but only you can{" "}
-          <span className="text-crema">send</span> from your college account. That's what makes
+          <span className="text-crema">send</span> from your college account. That&apos;s what makes
           catfishing impossible here.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-khaki">
@@ -122,15 +125,23 @@ export default function Verify() {
         </p>
       </Token>
 
-      <Token className="flex flex-col gap-3 p-5">
-        <span className="serial">EVERYTHING IS PRE-WRITTEN</span>
-        <div className="rounded-xl border border-line bg-bean2 p-3 text-sm">
-          <p className="text-khaki">To</p>
-          <p className="font-mono text-[13px] text-crema">{s.sendTo}</p>
-          <p className="mt-2 text-khaki">Subject</p>
-          <p className="font-mono text-[13px] text-crema">{subject}</p>
+      {/* The pre-written email is a literal cream ticket — tear it off, send it. */}
+      <div className="ticket pour-in p-5 pr-6" style={{ transform: "rotate(-0.6deg)" }}>
+        <div className="flex items-start justify-between gap-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#875D26]">
+            Everything is pre-written
+          </p>
+          <span className="stamp text-[#B4485F]">Ready</span>
         </div>
+        <div className="mt-3 text-sm">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] opacity-60">To</p>
+          <p className="font-mono text-[13px]">{s.sendTo}</p>
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] opacity-60">Subject</p>
+          <p className="font-mono text-[13px]">{subject}</p>
+        </div>
+      </div>
 
+      <div className="flex flex-col gap-3">
         <a href={mailto} onClick={() => setSent(true)} className="press block rounded-xl bg-honey py-3 text-center font-semibold text-cream">
           Open my mail app &amp; send
         </a>
@@ -143,19 +154,18 @@ export default function Verify() {
         >
           Open Outlook on the web
         </a>
-
-        <p className="text-center text-xs text-khaki">
+        <p className="text-center text-xs text-sediment">
           Send it from <span className="text-crema">{s.claimedEmail}</span> — it only works from that account.
         </p>
-      </Token>
+      </div>
 
       {sent ? (
-        <div className="flex items-center justify-center gap-2 text-sm text-khaki">
+        <div className="flex items-center justify-center gap-2 text-sm text-matcha-pastel">
           <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-matcha" />
           Waiting for your email… this page updates on its own.
         </div>
       ) : (
-        <p className="text-center text-xs text-khaki">
+        <p className="text-center text-xs text-sediment">
           This page updates by itself once your email arrives — no need to come back and click anything.
         </p>
       )}

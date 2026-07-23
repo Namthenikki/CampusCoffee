@@ -1,40 +1,52 @@
 @import "tailwindcss";
 
 @theme {
-  /* ---- Cherry & Cream (research-backed): warm, premium, one confident accent ---- */
-  --color-roast: #fbf6ee; /* page background — warm porcelain */
-  --color-bean: #ffffff; /* card surface */
-  --color-bean2: #f4ecdd; /* elevated / soft surface */
-  --color-line: #ebe0cf; /* hairlines */
-  --color-crema: #241a17; /* primary text — espresso */
-  --color-khaki: #8a776a; /* secondary text — mocha */
-  --color-honey: #d6303f; /* THE accent: actions (cherry) */
-  --color-spice: #d6303f; /* dating heat — same cherry, unified */
-  --color-matcha: #4f8a5e; /* success / locked — dill green */
-  --color-butter: #ebae3c; /* highlights — butter yellow */
-  --color-cream: #fff5ef; /* text on accent — fixed near-white, both themes */
+  /* ---- Dark Roast, Canteen Counter (docs/COLOR-RESEARCH.md) ----
+     Neutrals from the roast; accents from the drinks at the counter.
+     One drink family per screen. All pairings WCAG-verified. */
+  --color-roast: #1a1310; /* page background — roast-0 */
+  --color-bean: #231a15; /* card surface — roast-1 */
+  --color-bean2: #2d221b; /* elevated / inputs — roast-2 */
+  --color-line: #3a2c23; /* hairlines, perforation */
+  --color-crema: #f2e9db; /* primary text — cream (15.2:1) */
+  --color-khaki: #c4b5a3; /* secondary text — latte (9.2:1) */
+  --color-sediment: #8d7d6c; /* muted — serials, timestamps (4.6:1) */
+  --color-cream: #241812; /* ink: text on any accent fill (≥5.2:1 on all) */
+
+  /* burnt honey — mess partner + house accent + warning */
+  --color-honey: #dba55e; /* core: fills */
+  --color-butter: #f0ce9a; /* pastel: text/icons/outlines on dark */
+  --color-honey-stamp: #875d26; /* stamp ink on paper */
+
+  /* chai spice — coffee date + error */
+  --color-spice: #e06a50; /* core */
+  --color-spice-pastel: #f2ac9c; /* pastel */
+  --color-spice-stamp: #b03a24; /* stamp ink */
+
+  /* pista — library partner + success */
+  --color-matcha: #a9c98f; /* core */
+  --color-matcha-pastel: #c8dbb2; /* pastel */
+  --color-matcha-stamp: #546f45; /* stamp ink */
+
+  /* rose milk — blind coffee */
+  --color-rosemilk: #e89aab; /* core */
+  --color-rosemilk-pastel: #f5c1cb; /* pastel */
+  --color-rosemilk-stamp: #b4485f; /* stamp ink */
+
+  /* cream ticket — paper artifacts (share cards, pre-written email, wrapped) */
+  --color-paper: #f8f1e5;
+  --color-paper-edge: #ede2cf;
+  --color-ink: #241812;
 
   --font-display: var(--font-bricolage), system-ui, sans-serif;
   --font-sans: var(--font-instrument), system-ui, sans-serif;
   --font-mono: var(--font-smono), ui-monospace, monospace;
 }
 
-/* Night mode: warm charcoal, never muddy brown. Accent + accent-text stay put
-   so buttons keep their contrast; only the neutrals invert. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-roast: #1a1516;
-    --color-bean: #241d1e;
-    --color-bean2: #2c2324;
-    --color-line: #362b2c;
-    --color-crema: #f6ede6;
-    --color-khaki: #a18e84;
-    --color-matcha: #6fa57c;
-  }
-}
-
+/* The app commits to the dark roast — one visual world, by choice.
+   Cream lives on paper artifacts, not on page grounds. */
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 }
 
 html {
@@ -54,7 +66,7 @@ body {
   background: var(--color-bean);
   border: 1px solid var(--color-line);
   border-radius: 18px;
-  box-shadow: 0 1px 2px rgba(60, 40, 30, 0.04), 0 10px 26px rgba(60, 40, 30, 0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 12px 28px rgba(0, 0, 0, 0.3);
 }
 .token::before,
 .token::after {
@@ -72,6 +84,29 @@ body {
 .token::before { left: -10px; }
 .token::after { right: -10px; }
 
+/* Paper artifact: the cream ticket. Punched edge shows the roast through. */
+.ticket {
+  position: relative;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  border-radius: 12px;
+  padding-left: 26px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+}
+.ticket::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  bottom: 6px;
+  width: 10px;
+  background-image: radial-gradient(circle at 50% 50%, var(--color-roast) 3px, transparent 3.5px);
+  background-size: 10px 16px;
+  background-repeat: repeat-y;
+  background-position: center;
+  pointer-events: none;
+}
+
 .tear {
   border-top: 2px dashed var(--color-line);
 }
@@ -80,7 +115,7 @@ body {
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.22em;
-  color: var(--color-khaki);
+  color: var(--color-sediment);
   text-transform: uppercase;
 }
 
@@ -143,15 +178,15 @@ body {
 }
 
 ::selection {
-  background: var(--color-honey);
-  color: var(--color-cream);
+  background: var(--color-butter);
+  color: var(--color-ink);
 }
 
 input, textarea, select {
   outline: none;
 }
 :focus-visible {
-  outline: 2px solid var(--color-honey);
+  outline: 2px solid var(--color-butter);
   outline-offset: 2px;
   border-radius: 6px;
 }

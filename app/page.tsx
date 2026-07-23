@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { TokenMark } from "@/components/Logo";
 
 // The single gate. Every entry to the app routes through here:
 //   not signed in     -> /welcome
@@ -24,14 +25,12 @@ export default function Root() {
   }, [router]);
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-3">
-      <div className="steam font-display text-2xl text-khaki" aria-hidden>
-        <span>(</span>
-        <span>(</span>
-        <span>(</span>
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-5">
+      <div className="pour-in">
+        <TokenMark size={96} variant="coin" />
       </div>
-      <h1 className="font-display text-4xl font-bold">
-        Campus <span className="text-honey">Coffee</span>
+      <h1 className="font-display text-3xl font-bold tracking-tight">
+        Campus <span className="text-butter">Coffee</span>
       </h1>
       <p className="serial">BREWING…</p>
     </main>
