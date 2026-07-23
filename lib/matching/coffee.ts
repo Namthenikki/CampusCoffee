@@ -23,12 +23,6 @@ function tokens(s: string): string[] {
   return s.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !STOPWORDS.has(t));
 }
 
-function orientationOk(a: User, b: User): boolean {
-  const aOk = a.interestedIn === "everyone" || a.interestedIn === b.gender;
-  const bOk = b.interestedIn === "everyone" || b.interestedIn === a.gender;
-  return aOk && bOk;
-}
-
 export function scorePair(me: User, u: User): CoffeeCandidate {
   const parts = {
     interest: jaccard(me.interests, u.interests),
@@ -73,7 +67,6 @@ export function coffeeCandidates(
       u.onboarded &&
       (mode === "blind" ? u.blindOptIn : u.openOptIn) &&
       !seen.has(u.id) &&
-      orientationOk(me, u) &&
       u.reliability >= threshold, // serial no-shows quietly deprioritized
   );
 

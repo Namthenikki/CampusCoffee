@@ -1,5 +1,4 @@
 import type { Match, User } from "../types";
-import { HOSTELS } from "../types";
 
 // Diet compatibility: veg↔veg, veg↔egg, egg↔anyone, nonveg↔nonveg/egg.
 // Veg and nonveg don't hard-pair — the single biggest real-world mess friction.
@@ -8,14 +7,9 @@ function dietCompatible(a: User, b: User): boolean {
   return a.diet === b.diet;
 }
 
-// Hostel proximity: same block or adjacent block (Day Scholar pairs with anyone
-// since they walk in from the gate anyway).
-function hostelOk(a: User, b: User): boolean {
-  if (a.hostel === "Day Scholar" || b.hostel === "Day Scholar") return true;
-  const ia = HOSTELS.indexOf(a.hostel);
-  const ib = HOSTELS.indexOf(b.hostel);
-  return Math.abs(ia - ib) <= 1;
-}
+// Hostel proximity used to be a third hard filter. We no longer ask students
+// where they live, so slot + diet carry the filtering and the mess itself is
+// the meeting point anyway.
 
 export interface MessCandidate {
   user: User;
@@ -45,7 +39,6 @@ export function messCandidates(me: User, all: User[], matches: Match[]): MessCan
     // HARD FILTERS — excluded entirely, not ranked low
     .filter((u) => u.messSlot === me.messSlot)
     .filter((u) => dietCompatible(me, u))
-    .filter((u) => hostelOk(me, u))
     .map((u) => {
       // SOFT RANKING
       const freqSim = 1 - Math.abs(me.mealFreq - u.mealFreq) / 21;

@@ -9,7 +9,8 @@ export interface PublicUser {
   name: string; // first initial only while blind
   branch: string | null;
   year: number | null;
-  hostel: string;
+  fullName: string;
+  bio: string;
   diet: User["diet"];
   messSlot: User["messSlot"];
   mealFreq: number;
@@ -27,7 +28,10 @@ export function publicUser(u: User, opts?: { anonymous?: boolean }): PublicUser 
     name: anon ? `${u.name[0]}.` : u.name,
     branch: anon && !u.showBranchInBlind ? null : u.branch,
     year: u.year,
-    hostel: anon ? "—" : u.hostel,
+    // Blind partners stay a first initial with no bio — the bio is exactly
+    // the kind of detail that would give them away.
+    fullName: anon ? "" : u.fullName,
+    bio: anon ? "" : u.bio,
     diet: u.diet,
     messSlot: u.messSlot,
     mealFreq: u.mealFreq,

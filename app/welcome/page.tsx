@@ -6,11 +6,11 @@ import TimetableGrid from "@/components/TimetableGrid";
 import { api, Btn, Chip, Seg } from "@/components/ui";
 import { TokenMark } from "@/components/Logo";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { BRANCHES, HOSTELS, SLOTS_PER_DAY } from "@/lib/types";
+import { BRANCHES, SLOTS_PER_DAY } from "@/lib/types";
 
 type Me = {
-  name: string; gender: string; interestedIn: string; branch: string; year: number;
-  hostel: string; diet: string; messSlot: string; mealFreq: number; interests: string[];
+  name: string; fullName: string; bio: string; gender: string; branch: string; year: number;
+  diet: string; messSlot: string; mealFreq: number; interests: string[];
   subjects: string[]; studyStyle: string; prompt: { q: string; a: string } | null;
   timetable: boolean[][]; blindOptIn: boolean; openOptIn: boolean; showBranchInBlind: boolean;
   onboarded: boolean;
@@ -170,43 +170,81 @@ export default function Welcome() {
       {STEPS[step] === "you" && (
         <section className="flex flex-col gap-4">
           <h2 className="font-display text-2xl font-bold tracking-tight">Who&apos;s ordering?</h2>
-          <label className="text-sm text-khaki">Your name (what partners will see)</label>
-          <input
-            className="rounded-xl border border-line bg-bean2 px-4 py-3 text-crema placeholder:text-sediment"
-            placeholder="First name"
-            value={me.name}
-            onChange={(e) => patch({ name: e.target.value })}
-          />
+
+          <div>
+            <label className="text-sm text-khaki">Your display name</label>
+            <div className="mt-1 flex items-center justify-between rounded-xl border border-line bg-bean2/60 px-4 py-3">
+              <span className="font-display text-lg font-bold">{me.name}</span>
+              <span className="stamp text-matcha-pastel">Verified</span>
+            </div>
+            <p className="mt-1.5 text-xs text-sediment">
+              Taken from your college email, so it can&apos;t be changed. That&apos;s what makes it worth trusting.
+            </p>
+          </div>
+
+          <div>
+            <label className="text-sm text-khaki">Your full name</label>
+            <input
+              className="mt-1 w-full rounded-xl border border-line bg-bean2 px-4 py-3 text-crema placeholder:text-sediment focus:border-honey/60"
+              placeholder="As it appears on your ID"
+              maxLength={60}
+              value={me.fullName}
+              onChange={(e) => patch({ fullName: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <div className="flex items-baseline justify-between">
+              <label className="text-sm text-khaki">Say something about yourself</label>
+              <span className={`font-mono text-[11px] ${me.bio.length > 230 ? "text-spice-pastel" : "text-sediment"}`}>
+                {me.bio.length}/250
+              </span>
+            </div>
+            <textarea
+              className="mt-1 h-24 w-full resize-none rounded-xl border border-line bg-bean2 px-4 py-3 text-crema placeholder:text-sediment focus:border-honey/60"
+              placeholder="Third bench, left row. Will argue about football and share my notes."
+              maxLength={250}
+              value={me.bio}
+              onChange={(e) => patch({ bio: e.target.value.slice(0, 250) })}
+            />
+            <p className="mt-1.5 text-xs text-sediment">
+              This shows next to your name and photo. Make it sound like you.
+            </p>
+          </div>
+
           <label className="text-sm text-khaki">I am</label>
           <Seg
             options={[{ value: "female", label: "Female" }, { value: "male", label: "Male" }, { value: "other", label: "Other" }]}
             value={me.gender as "female"} onChange={(v) => patch({ gender: v })}
           />
-          <label className="text-sm text-khaki">Interested in (for the coffee side)</label>
-          <Seg
-            options={[{ value: "female", label: "Women" }, { value: "male", label: "Men" }, { value: "everyone", label: "Everyone" }]}
-            value={me.interestedIn as "female"} onChange={(v) => patch({ interestedIn: v })}
-          />
-          <label className="text-sm text-khaki">Branch & year</label>
+
+          <label className="text-sm text-khaki">Branch</label>
           <div className="flex flex-wrap gap-2">
             {BRANCHES.map((b) => (
               <button key={b} onClick={() => patch({ branch: b })} className="press">
                 <Chip tone={me.branch === b ? "honey" : "line"}>{b}</Chip>
               </button>
             ))}
+            <button onClick={() => patch({ branch: "" })} className="press">
+              <Chip tone={!BRANCHES.includes(me.branch) ? "honey" : "line"}>Other</Chip>
+            </button>
           </div>
+          {!BRANCHES.includes(me.branch) && (
+            <input
+              autoFocus
+              className="w-full rounded-xl border border-line bg-bean2 px-4 py-3 text-crema placeholder:text-sediment focus:border-honey/60"
+              placeholder="Type your branch"
+              maxLength={40}
+              value={me.branch}
+              onChange={(e) => patch({ branch: e.target.value })}
+            />
+          )}
+
+          <label className="text-sm text-khaki">Year</label>
           <div className="flex gap-2">
             {[1, 2, 3, 4].map((y) => (
               <button key={y} onClick={() => patch({ year: y })} className="press">
                 <Chip tone={me.year === y ? "honey" : "line"}>Year {y}</Chip>
-              </button>
-            ))}
-          </div>
-          <label className="text-sm text-khaki">Where do you stay?</label>
-          <div className="flex flex-wrap gap-2">
-            {HOSTELS.map((h) => (
-              <button key={h} onClick={() => patch({ hostel: h })} className="press">
-                <Chip tone={me.hostel === h ? "honey" : "line"}>{h}</Chip>
               </button>
             ))}
           </div>
@@ -321,7 +359,7 @@ export default function Welcome() {
       <div className="mt-auto flex gap-3 pt-4">
         {step > 0 && <Btn variant="ghost" onClick={() => setStep(step - 1)}>Back</Btn>}
         {step < STEPS.length - 1 ? (
-          <Btn full onClick={() => setStep(step + 1)}>Next</Btn>
+          <Btn full onClick={() => setStep(step + 1)} disabled={step === 0 && (!me.fullName.trim() || !me.branch.trim())}>Next</Btn>
         ) : (
           <Btn full onClick={finish}>Stamp my token ☕</Btn>
         )}

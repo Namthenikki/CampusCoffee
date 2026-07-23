@@ -17,11 +17,11 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  fullName: string;
+  bio: string;
   gender: Gender;
-  interestedIn: Gender | "everyone";
   branch: string;
   year: number;
-  hostel: string;
   diet: Diet;
   messSlot: MessSlot;
   mealFreq: number; // mess meals per week, 0–21

@@ -14,11 +14,11 @@ export function rowToUser(row: Row, email: string): User {
     id: row.id as string,
     email,
     name: row.name as string,
+    fullName: (row.full_name as string) ?? "",
+    bio: (row.bio as string) ?? "",
     gender: row.gender as User["gender"],
-    interestedIn: row.interested_in as User["interestedIn"],
     branch: row.branch as string,
     year: row.year as number,
-    hostel: row.hostel as string,
     diet: row.diet as User["diet"],
     messSlot: row.mess_slot as User["messSlot"],
     mealFreq: row.meal_freq as number,
@@ -45,12 +45,11 @@ export function rowToUser(row: Row, email: string): User {
 
 // Only these fields can be written from the client, mapped to their columns.
 const EDITABLE: Record<string, string> = {
-  name: "name",
+  fullName: "full_name",
+  bio: "bio",
   gender: "gender",
-  interestedIn: "interested_in",
   branch: "branch",
   year: "year",
-  hostel: "hostel",
   diet: "diet",
   messSlot: "mess_slot",
   mealFreq: "meal_freq",

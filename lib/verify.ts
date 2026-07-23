@@ -95,11 +95,22 @@ export async function redeemCode(
     .maybeSingle();
   if (!consumed) return record("bad_code");
 
+  // The display name comes from the verified college address, not from
+  // anything the student typed. It's the one identity field they can't change
+  // afterwards, which is what makes it meaningful next to their face.
+  const firstName = from.split("@")[0].split(".")[0];
+  const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+
   // One college mailbox, one account — enforced by a unique index, so even a
   // race between two signups can't produce duplicates.
   const { data: updated, error: claimErr } = await db
     .from("profiles")
-    .update({ verified: true, verified_at: new Date().toISOString(), campus_email: from })
+    .update({
+      verified: true,
+      verified_at: new Date().toISOString(),
+      campus_email: from,
+      name: displayName,
+    })
     .eq("id", consumed.user_id as string)
     .select("id")
     .maybeSingle();
