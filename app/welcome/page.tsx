@@ -228,7 +228,7 @@ export default function Welcome() {
 
           <label className="text-sm text-khaki">I am</label>
           <Seg
-            options={[{ value: "female", label: "Female" }, { value: "male", label: "Male" }, { value: "other", label: "Other" }]}
+            options={[{ value: "female", label: "Female" }, { value: "male", label: "Male" }]}
             value={me.gender as "female"} onChange={(v) => patch({ gender: v })}
           />
 
