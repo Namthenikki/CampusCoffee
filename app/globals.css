@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+@theme {
+  /* ---- Cherry & Cream (research-backed): warm, premium, one confident accent ---- */
+  --color-roast: #fbf6ee; /* page background — warm porcelain */
+  --color-bean: #ffffff; /* card surface */
+  --color-bean2: #f4ecdd; /* elevated / soft surface */
+  --color-line: #ebe0cf; /* hairlines */
+  --color-crema: #241a17; /* primary text — espresso */
+  --color-khaki: #8a776a; /* secondary text — mocha */
+  --color-honey: #d6303f; /* THE accent: actions (cherry) */
+  --color-spice: #d6303f; /* dating heat — same cherry, unified */
+  --color-matcha: #4f8a5e; /* success / locked — dill green */
+  --color-butter: #ebae3c; /* highlights — butter yellow */
+  --color-cream: #fff5ef; /* text on accent — fixed near-white, both themes */
+
+  --font-display: var(--font-bricolage), system-ui, sans-serif;
+  --font-sans: var(--font-instrument), system-ui, sans-serif;
+  --font-mono: var(--font-smono), ui-monospace, monospace;
+}
+
+/* Night mode: warm charcoal, never muddy brown. Accent + accent-text stay put
+   so buttons keep their contrast; only the neutrals invert. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-roast: #1a1516;
+    --color-bean: #241d1e;
+    --color-bean2: #2c2324;
+    --color-line: #362b2c;
+    --color-crema: #f6ede6;
+    --color-khaki: #a18e84;
+    --color-matcha: #6fa57c;
+  }
+}
+
+:root {
+  color-scheme: light dark;
+}
+
+html {
+  background: var(--color-roast);
+}
+
+body {
+  background: var(--color-roast);
+  color: var(--color-crema);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---- Signature: the mess-coupon token ---- */
+.token {
+  position: relative;
+  background: var(--color-bean);
+  border: 1px solid var(--color-line);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(60, 40, 30, 0.04), 0 10px 26px rgba(60, 40, 30, 0.05);
+}
+.token::before,
+.token::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: var(--color-roast);
+  border: 1px solid var(--color-line);
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.token::before { left: -10px; }
+.token::after { right: -10px; }
+
+.tear {
+  border-top: 2px dashed var(--color-line);
+}
+
+.serial {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--color-khaki);
+  text-transform: uppercase;
+}
+
+/* Rubber stamp */
+.stamp {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  padding: 2px 7px;
+  transform: rotate(-5deg);
+  opacity: 0.95;
+}
+
+/* Press feedback everywhere */
+.press {
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+.press:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+/* Steam wisp on the wordmark */
+@keyframes steam {
+  0% { transform: translateY(0) scaleX(1); opacity: 0; }
+  30% { opacity: 0.7; }
+  100% { transform: translateY(-14px) scaleX(1.6); opacity: 0; }
+}
+.steam span {
+  display: inline-block;
+  animation: steam 2.6s ease-out infinite;
+}
+.steam span:nth-child(2) { animation-delay: 0.9s; }
+.steam span:nth-child(3) { animation-delay: 1.7s; }
+
+/* Token pour-in */
+@keyframes pourIn {
+  from { transform: translateY(14px) rotate(-1deg); opacity: 0; }
+  to { transform: translateY(0) rotate(0); opacity: 1; }
+}
+.pour-in {
+  animation: pourIn 480ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .steam span, .pour-in { animation: none; }
+  .press, .press:active { transition: none; transform: none; }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+::selection {
+  background: var(--color-honey);
+  color: var(--color-cream);
+}
+
+input, textarea, select {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--color-honey);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
