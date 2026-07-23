@@ -46,6 +46,16 @@ export function scorePair(me: User, u: User): CoffeeCandidate {
   };
 }
 
+// The dating side pairs across genders only — never two people of the same
+// gender. Mess and Library stay open to everyone; this rule is specific to
+// Blind Coffee and Coffee Date, so it lives here rather than in shared code.
+//
+// "Other" is treated as different from both male and female, so those students
+// still get a queue instead of a silent dead end.
+function differentGender(a: User, b: User): boolean {
+  return a.gender !== b.gender;
+}
+
 export function coffeeCandidates(
   me: User,
   all: User[],
@@ -67,6 +77,7 @@ export function coffeeCandidates(
       u.onboarded &&
       (mode === "blind" ? u.blindOptIn : u.openOptIn) &&
       !seen.has(u.id) &&
+      differentGender(me, u) &&
       u.reliability >= threshold, // serial no-shows quietly deprioritized
   );
 
