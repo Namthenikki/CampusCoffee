@@ -1,13 +1,14 @@
 import { addMessage, getMatchFor, getProfile, listMessages, saveMatch } from "@/lib/data/repo";
 import { tickMatch } from "@/lib/matchflow";
 import { matchView } from "@/lib/serialize";
-import { currentUser, json, unauthorized } from "@/lib/session";
+import { json, requireVerified } from "@/lib/session";
 
 type Ctx = { params: Promise<{ matchId: string }> };
 
 export async function GET(_req: Request, ctx: Ctx) {
-  const me = await currentUser();
-  if (!me) return unauthorized();
+  const gate = await requireVerified();
+  if ("deny" in gate) return gate.deny;
+  const me = gate.me;
   const { matchId } = await ctx.params;
   const match = await getMatchFor(matchId, me.id);
   if (!match) return json({ error: "Match not found" }, { status: 404 });
@@ -26,8 +27,9 @@ export async function GET(_req: Request, ctx: Ctx) {
 const CONTACT = /(https?:\/\/|www\.|\.com|\.in\b|\.me\b|@[a-z0-9_.]{3,}|insta|snapchat|whatsapp|\+?\d{10})/i;
 
 export async function POST(req: Request, ctx: Ctx) {
-  const me = await currentUser();
-  if (!me) return unauthorized();
+  const gate = await requireVerified();
+  if ("deny" in gate) return gate.deny;
+  const me = gate.me;
   const { matchId } = await ctx.params;
   const text = String((await req.json().catch(() => ({}))).text ?? "").trim().slice(0, 500);
   if (!text) return json({ error: "Empty message" }, { status: 400 });

@@ -1,11 +1,12 @@
 import { insertPost, joinPost, listPosts, profilesByIds } from "@/lib/data/repo";
 import { publicUser } from "@/lib/serialize";
-import { currentUser, json, unauthorized } from "@/lib/session";
+import { json, requireVerified } from "@/lib/session";
 
 // Group posts: "need 2 more for dinner tonight" — mess and library both.
 export async function GET(req: Request) {
-  const me = await currentUser();
-  if (!me) return unauthorized();
+  const gate = await requireVerified();
+  if ("deny" in gate) return gate.deny;
+  const me = gate.me;
   const kind = new URL(req.url).searchParams.get("kind") === "library" ? "library" : "mess";
   const posts = await listPosts(kind);
 
@@ -27,8 +28,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const me = await currentUser();
-  if (!me) return unauthorized();
+  const gate = await requireVerified();
+  if ("deny" in gate) return gate.deny;
+  const me = gate.me;
   const body = await req.json().catch(() => ({}));
 
   if (body.join) {

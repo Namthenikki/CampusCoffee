@@ -26,3 +26,27 @@ export function json(data: unknown, init?: ResponseInit): Response {
 export function unauthorized(): Response {
   return json({ error: "Not signed in" }, { status: 401 });
 }
+
+/**
+ * The signed-in student, but only if they've proved they're a student.
+ *
+ * The redirects in the pages are a convenience, not a control — anyone can
+ * call an API route directly with a session cookie. Every route that reads or
+ * writes real student data goes through this, so an unverified account is
+ * refused at the server regardless of what the client does.
+ *
+ * Returns either the user or the Response to send back.
+ */
+export async function requireVerified(): Promise<{ me: User } | { deny: Response }> {
+  const me = await currentUser();
+  if (!me) return { deny: unauthorized() };
+  if (!me.verified) {
+    return {
+      deny: json(
+        { error: "Verify your college email first", needsVerification: true },
+        { status: 403 },
+      ),
+    };
+  }
+  return { me };
+}

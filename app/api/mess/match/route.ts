@@ -1,9 +1,10 @@
 import { findMatch, getProfile, insertMatch } from "@/lib/data/repo";
-import { currentUser, json, unauthorized } from "@/lib/session";
+import { json, requireVerified } from "@/lib/session";
 
 export async function POST(req: Request) {
-  const me = await currentUser();
-  if (!me) return unauthorized();
+  const gate = await requireVerified();
+  if ("deny" in gate) return gate.deny;
+  const me = gate.me;
   const { userId } = await req.json().catch(() => ({}));
   if (typeof userId !== "string" || userId === me.id) {
     return json({ error: "Pick someone to pair with" }, { status: 400 });

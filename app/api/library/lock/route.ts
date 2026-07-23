@@ -1,8 +1,9 @@
-import { currentUser, json, unauthorized } from "@/lib/session";
+import { json, requireVerified } from "@/lib/session";
 
 // Pending migration to Supabase — ports with the Library Partner feature.
 export async function POST() {
-  const me = await currentUser();
-  if (!me) return unauthorized();
+  const gate = await requireVerified();
+  if ("deny" in gate) return gate.deny;
+  const me = gate.me;
   return json({ error: "Library Partner is coming online shortly." }, { status: 503 });
 }

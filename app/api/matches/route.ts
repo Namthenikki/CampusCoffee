@@ -1,12 +1,13 @@
 import { lastMessages, myMatches, profilesByIds } from "@/lib/data/repo";
 import { tickMatch } from "@/lib/matchflow";
 import { matchView } from "@/lib/serialize";
-import { currentUser, json, unauthorized } from "@/lib/session";
+import { json, requireVerified } from "@/lib/session";
 import { saveMatch } from "@/lib/data/repo";
 
 export async function GET() {
-  const me = await currentUser();
-  if (!me) return unauthorized();
+  const gate = await requireVerified();
+  if ("deny" in gate) return gate.deny;
+  const me = gate.me;
   const matches = await myMatches(me.id);
 
   // Roll any expired blind windows over to the decision stage.

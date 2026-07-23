@@ -75,19 +75,37 @@ export async function redeemCode(
   if (!row || row.used_at) return record("bad_code");
   if (new Date(row.expires_at as string).getTime() < Date.now()) return record("expired");
 
-  // The code only works from the exact address the student claimed. A code
+  // The code only works from the exact address the student claimed, so a code
   // glimpsed on someone else's screen is worthless without their mailbox.
-  const claimed = (row.claimed_email as string | null)?.toLowerCase();
-  if (claimed && claimed !== from) return record("bad_code");
+  // A code with no claimed address is never redeemable — treating a missing
+  // binding as "any campus sender will do" would defeat the whole check.
+  const claimed = (row.claimed_email as string | null)?.trim().toLowerCase();
+  if (!claimed || claimed !== from) return record("bad_code");
 
-  // One college mailbox, one account — enforced by a unique index, so a race
-  // between two signups still can't produce duplicates.
-  const { error: claimErr } = await db
+  // Consume the code atomically. Brevo retries deliveries — we've seen the same
+  // message arrive twice — so two handlers can run this concurrently. The
+  // `is("used_at", null)` filter means exactly one of them updates a row; the
+  // loser gets nothing back and stops here.
+  const { data: consumed } = await db
+    .from("verification_codes")
+    .update({ used_at: new Date().toISOString() })
+    .eq("code", code)
+    .is("used_at", null)
+    .select("user_id")
+    .maybeSingle();
+  if (!consumed) return record("bad_code");
+
+  // One college mailbox, one account — enforced by a unique index, so even a
+  // race between two signups can't produce duplicates.
+  const { data: updated, error: claimErr } = await db
     .from("profiles")
     .update({ verified: true, verified_at: new Date().toISOString(), campus_email: from })
-    .eq("id", row.user_id as string);
-  if (claimErr) return record("duplicate");
+    .eq("id", consumed.user_id as string)
+    .select("id")
+    .maybeSingle();
 
-  await db.from("verification_codes").update({ used_at: new Date().toISOString() }).eq("code", code);
+  // No error but no row means the account vanished between issuing and
+  // redeeming — don't report success for a profile we didn't actually mark.
+  if (claimErr || !updated) return record("duplicate");
   return record("verified");
 }

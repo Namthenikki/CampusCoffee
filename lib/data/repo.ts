@@ -8,8 +8,15 @@ import { matchUpdate, rowToMatch, rowToMessage, rowToPost, rowToUser } from "./m
 // it — callers are responsible for only ever returning a serialized, filtered
 // view to the client (see lib/serialize.ts).
 
+// Only verified students are matchable. An unverified account can exist (it's
+// mid-signup) but must never surface as somebody's potential mess partner or
+// coffee date — that's the whole point of the verification gate.
 export async function allProfiles(): Promise<User[]> {
-  const { data } = await supabaseAdmin().from("profiles").select("*").eq("onboarded", true);
+  const { data } = await supabaseAdmin()
+    .from("profiles")
+    .select("*")
+    .eq("onboarded", true)
+    .eq("verified", true);
   return (data ?? []).map((r) => rowToUser(r, ""));
 }
 
