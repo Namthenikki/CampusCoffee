@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, Btn } from "@/components/ui";
-import { compressImage, reelDuration, uploadMedia } from "@/lib/upload";
+import { compressImage, uploadMedia } from "@/lib/upload";
 import { matchSelfie } from "@/lib/face";
 
 type Item = { id: string; kind: "photo" | "reel" | "selfie"; position: number; hasFace: boolean; durationMs: number | null; url: string | null };
@@ -16,7 +16,6 @@ export default function Photos() {
   const [err, setErr] = useState("");
   const [face, setFace] = useState<"idle" | "checking" | "matched" | "mismatch">("idle");
   const photoInput = useRef<HTMLInputElement>(null);
-  const reelInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const data = await api<Media>("/api/media").catch(() => null);
@@ -26,7 +25,6 @@ export default function Photos() {
   useEffect(() => { load(); }, [load]);
 
   const photos = m?.media.filter((x) => x.kind === "photo") ?? [];
-  const reel = m?.media.find((x) => x.kind === "reel");
   const selfie = m?.media.find((x) => x.kind === "selfie");
 
   const addPhoto = async (file: File) => {
@@ -34,18 +32,6 @@ export default function Photos() {
     try {
       const { blob, width, height } = await compressImage(file);
       await uploadMedia("photo", blob, { width, height, hasFace: true });
-      await load();
-    } catch (e) { setErr(e instanceof Error ? e.message : "Upload failed"); }
-    setBusy(null);
-  };
-
-  const addReel = async (file: File) => {
-    setErr(""); setBusy("reel");
-    try {
-      const durationMs = await reelDuration(file);
-      if (durationMs > 30_500) throw new Error("Reels can be at most 30 seconds");
-      if (file.size > 15_000_000) throw new Error("That video's too big — keep it short");
-      await uploadMedia("reel", file, { durationMs });
       await load();
     } catch (e) { setErr(e instanceof Error ? e.message : "Upload failed"); }
     setBusy(null);
@@ -128,20 +114,7 @@ export default function Photos() {
       </div>
       <p className="-mt-3 font-mono text-[11px] text-sediment">{photos.length}/5 photos</p>
 
-      {/* Reel */}
-      <div>
-        <p className="mb-2 text-sm font-semibold text-crema">Reel <span className="font-normal text-sediment">· optional, up to 30s</span></p>
-        {reel ? (
-          <div className="relative aspect-video overflow-hidden rounded-xl border border-line bg-bean2">
-            {reel.url && <video src={reel.url} className="h-full w-full object-cover" controls playsInline muted />}
-            <button onClick={() => remove(reel.id)} className="press absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-roast/80 text-crema" aria-label="Remove reel">×</button>
-          </div>
-        ) : (
-          <button onClick={() => reelInput.current?.click()} disabled={!!busy} className="press flex h-14 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line text-khaki">
-            <span>🎬</span>{busy === "reel" ? "Uploading…" : "Add a 30-second reel"}
-          </button>
-        )}
-      </div>
+      {/* Reel — hidden for now; the upload/compression path lands later. */}
 
       {/* Selfie */}
       <div>
@@ -194,7 +167,6 @@ export default function Photos() {
       </div>
 
       <input ref={photoInput} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) addPhoto(f); }} />
-      <input ref={reelInput} type="file" accept="video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) addReel(f); }} />
     </main>
   );
 }
