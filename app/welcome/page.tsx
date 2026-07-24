@@ -2,28 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import TimetableGrid from "@/components/TimetableGrid";
 import { api, Btn, Chip, Seg } from "@/components/ui";
 import { TokenMark } from "@/components/Logo";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { BRANCHES, SLOTS_PER_DAY } from "@/lib/types";
+import { BRANCHES } from "@/lib/types";
 
 type Me = {
-  name: string; fullName: string; bio: string; dob: string | null; gender: string; branch: string; year: number;
-  diet: string; messSlot: string; mealFreq: number; interests: string[];
-  subjects: string[]; studyStyle: string; prompt: { q: string; a: string } | null;
-  timetable: boolean[][]; blindOptIn: boolean; openOptIn: boolean; showBranchInBlind: boolean;
-  onboarded: boolean;
-  verified: boolean;
-};
-type Pools = { interests: string[]; subjects: string[]; prompts: string[] };
-
-const STEPS = ["you", "interests", "study", "timetable", "coffee"] as const;
-
-// Each wizard step answers in its feature's drink (COLOR-RESEARCH: one family per screen).
-const STEP_FILL: Record<(typeof STEPS)[number], string> = {
-  you: "bg-honey", interests: "bg-honey",
-  study: "bg-matcha", timetable: "bg-matcha", coffee: "bg-rosemilk",
+  name: string; fullName: string; bio: string; dob: string | null;
+  gender: string; branch: string; year: number;
+  onboarded: boolean; verified: boolean;
 };
 
 // The menu strip: the four features, shown as stamp dots — accents stay inside
@@ -52,20 +39,18 @@ export default function Welcome() {
   const supabaseRef = useRef<ReturnType<typeof supabaseBrowser> | null>(null);
   const supabase = () => (supabaseRef.current ??= supabaseBrowser());
   const [stage, setStage] = useState<"loading" | "email" | "wizard">("loading");
-  const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [me, setMe] = useState<Me | null>(null);
-  const [pools, setPools] = useState<Pools>({ interests: [], subjects: [], prompts: [] });
 
   // Already signed in? Skip straight to onboarding or home.
   useEffect(() => {
-    api<{ me: Me; pools: Pools }>("/api/me")
-      .then(({ me, pools }) => {
+    api<{ me: Me }>("/api/me")
+      .then(({ me }) => {
         // Student status comes before anything else — no profile, no browsing.
         if (!me.verified) router.replace("/verify");
         else if (me.onboarded) router.replace("/today");
-        else { setMe(me); setPools(pools); setStage("wizard"); }
+        else { setMe(me); setStage("wizard"); }
       })
       .catch(() => setStage("email"));
   }, [router]);
@@ -93,17 +78,14 @@ export default function Welcome() {
   };
 
   const patch = (p: Partial<Me>) => setMe((m) => (m ? { ...m, ...p } : m));
-  const toggleIn = (key: "interests" | "subjects", v: string, max: number) => {
-    if (!me) return;
-    const has = me[key].includes(v);
-    if (!has && me[key].length >= max) return;
-    patch({ [key]: has ? me[key].filter((x) => x !== v) : [...me[key], v] } as Partial<Me>);
-  };
 
   const finish = async () => {
     if (!me) return;
-    await api("/api/me", { method: "PATCH", body: JSON.stringify({ ...me, onboarded: true }) });
-    // Photos come next, on their own page.
+    const { fullName, bio, dob, gender, branch, year } = me;
+    await api("/api/me", {
+      method: "PATCH",
+      body: JSON.stringify({ fullName, bio, dob, gender, branch, year, onboarded: true }),
+    });
     router.replace("/profile/photos");
   };
 
@@ -154,22 +136,10 @@ export default function Welcome() {
   }
 
   if (!me) return null;
-  const pct = Math.round(((step + 1) / STEPS.length) * 100);
-  const fill = STEP_FILL[STEPS[step]];
 
   return (
     <main className="flex min-h-dvh flex-col gap-5 px-5 py-8">
-      <div>
-        <div className="mb-1.5 flex justify-between font-mono text-[10px] uppercase tracking-[0.18em] text-sediment">
-          <span>Brewing your profile</span><span>{pct}%</span>
-        </div>
-        <div className="h-1.5 rounded-full bg-bean2">
-          <div className={`h-full rounded-full transition-all ${fill}`} style={{ width: `${pct}%` }} />
-        </div>
-      </div>
-
-      {STEPS[step] === "you" && (
-        <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-4">
           <h2 className="font-display text-2xl font-bold tracking-tight">Who&apos;s ordering?</h2>
 
           <div>
@@ -264,102 +234,11 @@ export default function Welcome() {
             ))}
           </div>
         </section>
-      )}
 
-      {STEPS[step] === "interests" && (
-        <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl font-bold tracking-tight">What are you into?</h2>
-          <p className="text-sm text-khaki">Pick 3–6. These drive who you meet.</p>
-          <div className="flex flex-wrap gap-2">
-            {pools.interests.map((i) => (
-              <button key={i} onClick={() => toggleIn("interests", i, 6)} className="press">
-                <Chip tone={me.interests.includes(i) ? "honey" : "line"}>{i}</Chip>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {STEPS[step] === "study" && (
-        <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl font-bold tracking-tight">Study mode</h2>
-          <label className="text-sm text-khaki">Subjects this sem (pick up to 4)</label>
-          <div className="flex flex-wrap gap-2">
-            {pools.subjects.map((s) => (
-              <button key={s} onClick={() => toggleIn("subjects", s, 4)} className="press">
-                <Chip tone={me.subjects.includes(s) ? "matcha" : "line"}>{s}</Chip>
-              </button>
-            ))}
-          </div>
-          <label className="text-sm text-khaki">How do you study?</label>
-          <Seg
-            options={[{ value: "silent", label: "Pin-drop" }, { value: "discussion", label: "Debate it" }, { value: "mixed", label: "Depends" }]}
-            value={me.studyStyle as "mixed"} onChange={(v) => patch({ studyStyle: v })}
-          />
-        </section>
-      )}
-
-      {STEPS[step] === "timetable" && (
-        <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl font-bold tracking-tight">Your free hours</h2>
-          <p className="text-sm text-khaki">
-            Honest input = better study partners. We only show people whose free time actually overlaps yours.
-          </p>
-          <TimetableGrid
-            value={me.timetable?.length ? me.timetable : Array.from({ length: 6 }, () => Array(SLOTS_PER_DAY).fill(false))}
-            onChange={(t) => patch({ timetable: t })}
-          />
-        </section>
-      )}
-
-      {STEPS[step] === "coffee" && (
-        <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl font-bold tracking-tight">The coffee side</h2>
-          <p className="text-sm text-khaki">Both optional. Both leave-able anytime.</p>
-          <button className="token press flex items-center justify-between gap-3 p-4 text-left" onClick={() => patch({ blindOptIn: !me.blindOptIn })}>
-            <div>
-              <p className="font-display font-bold text-rosemilk-pastel">Blind Coffee</p>
-              <p className="mt-0.5 text-sm text-khaki">Anonymous. 48 hours of chat, then decide. No photos till you&apos;ve met.</p>
-            </div>
-            <Chip tone={me.blindOptIn ? "rosemilk" : "line"}>{me.blindOptIn ? "IN" : "OUT"}</Chip>
-          </button>
-          <button className="token press flex items-center justify-between gap-3 p-4 text-left" onClick={() => patch({ openOptIn: !me.openOptIn })}>
-            <div>
-              <p className="font-display font-bold text-spice-pastel">Coffee Date</p>
-              <p className="mt-0.5 text-sm text-khaki">The regular version — profiles visible from the start.</p>
-            </div>
-            <Chip tone={me.openOptIn ? "spice" : "line"}>{me.openOptIn ? "IN" : "OUT"}</Chip>
-          </button>
-          {me.blindOptIn && (
-            <button className="press flex items-center justify-between rounded-xl border border-line bg-bean px-4 py-3 text-left text-sm" onClick={() => patch({ showBranchInBlind: !me.showBranchInBlind })}>
-              <span className="text-khaki">Show my branch while anonymous</span>
-              <Chip tone={me.showBranchInBlind ? "rosemilk" : "line"}>{me.showBranchInBlind ? "Yes" : "No"}</Chip>
-            </button>
-          )}
-          <label className="text-sm text-khaki">One prompt (dating cards only)</label>
-          <select
-            className="rounded-xl border border-line bg-bean2 px-3 py-3 text-sm text-crema"
-            value={me.prompt?.q ?? pools.prompts[0]}
-            onChange={(e) => patch({ prompt: { q: e.target.value, a: me.prompt?.a ?? "" } })}
-          >
-            {pools.prompts.map((p) => <option key={p}>{p}</option>)}
-          </select>
-          <input
-            className="rounded-xl border border-line bg-bean2 px-4 py-3 text-crema placeholder:text-sediment"
-            placeholder="Your answer…" maxLength={80}
-            value={me.prompt?.a ?? ""}
-            onChange={(e) => patch({ prompt: { q: me.prompt?.q ?? pools.prompts[0], a: e.target.value } })}
-          />
-        </section>
-      )}
-
-      <div className="mt-auto flex gap-3 pt-4">
-        {step > 0 && <Btn variant="ghost" onClick={() => setStep(step - 1)}>Back</Btn>}
-        {step < STEPS.length - 1 ? (
-          <Btn full onClick={() => setStep(step + 1)} disabled={step === 0 && (!me.fullName.trim() || !me.branch.trim() || !me.dob)}>Next</Btn>
-        ) : (
-          <Btn full onClick={finish}>Stamp my token ☕</Btn>
-        )}
+      <div className="mt-auto pt-4">
+        <Btn full onClick={finish} disabled={!me.fullName.trim() || !me.branch.trim() || !me.dob}>
+          Next: your photos
+        </Btn>
       </div>
     </main>
   );
