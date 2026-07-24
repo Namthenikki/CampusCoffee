@@ -103,7 +103,8 @@ export default function Welcome() {
   const finish = async () => {
     if (!me) return;
     await api("/api/me", { method: "PATCH", body: JSON.stringify({ ...me, onboarded: true }) });
-    router.replace("/today");
+    // Photos come next, on their own page.
+    router.replace("/profile/photos");
   };
 
   if (stage === "loading") {

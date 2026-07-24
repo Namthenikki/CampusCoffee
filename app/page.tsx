@@ -19,6 +19,7 @@ export default function Root() {
         if (!me) router.replace("/welcome");
         else if (!me.verified) router.replace("/verify");
         else if (!me.onboarded) router.replace("/welcome");
+        else if (!me.photosComplete) router.replace("/profile/photos");
         else router.replace("/today");
       })
       .catch(() => router.replace("/welcome"));
