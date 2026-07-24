@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, Btn } from "@/components/ui";
 import { compressImage, reelDuration, uploadMedia } from "@/lib/upload";
+import { matchSelfie } from "@/lib/face";
 
 type Item = { id: string; kind: "photo" | "reel" | "selfie"; position: number; hasFace: boolean; durationMs: number | null; url: string | null };
 type Media = { media: Item[]; complete: { ok: boolean; reason?: string } };
@@ -13,6 +14,7 @@ export default function Photos() {
   const [m, setM] = useState<Media | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState("");
+  const [face, setFace] = useState<"idle" | "checking" | "matched" | "mismatch">("idle");
   const photoInput = useRef<HTMLInputElement>(null);
   const reelInput = useRef<HTMLInputElement>(null);
 
@@ -63,6 +65,24 @@ export default function Photos() {
     await api("/api/media", { method: "PATCH", body: JSON.stringify({ order }) });
     await load();
   };
+
+  // Once there's a selfie and photos, compare them in the browser. A match keeps
+  // the selfie private; a mismatch will show it to others, and they can retake.
+  const runFaceCheck = useCallback(async () => {
+    const sel = m?.media.find((x) => x.kind === "selfie");
+    const pics = (m?.media.filter((x) => x.kind === "photo") ?? []).map((p) => p.url).filter(Boolean) as string[];
+    if (!sel?.url || pics.length === 0) return;
+    setFace("checking");
+    const res = await matchSelfie(sel.url, pics);
+    await api("/api/media", { method: "POST", body: JSON.stringify({ step: "faceresult", matched: res.matched, score: res.score }) }).catch(() => {});
+    setFace(res.matched ? "matched" : "mismatch");
+  }, [m]);
+
+  const selfieId = m?.media.find((x) => x.kind === "selfie")?.id;
+  const photoCount = m?.media.filter((x) => x.kind === "photo").length ?? 0;
+  useEffect(() => {
+    if (selfieId && photoCount > 0 && face === "idle") runFaceCheck();
+  }, [selfieId, photoCount, face, runFaceCheck]);
 
   const done = async () => {
     await load();
@@ -127,15 +147,36 @@ export default function Photos() {
       <div>
         <p className="mb-2 text-sm font-semibold text-crema">Selfie <span className="font-normal text-sediment">· so others know it's really you</span></p>
         {selfie ? (
-          <div className="flex items-center gap-3 rounded-xl border border-matcha/40 bg-matcha/10 p-3">
-            {selfie.url && <img src={selfie.url} alt="" className="h-14 w-14 rounded-lg object-cover" />}
+          <div className={`flex items-center gap-3 rounded-xl border p-3 ${
+            face === "matched" ? "border-matcha/40 bg-matcha/10"
+            : face === "mismatch" ? "border-spice/40 bg-spice/10"
+            : "border-line bg-bean2"
+          }`}>
+            {selfie.url && <img src={selfie.url} alt="" className="h-16 w-16 rounded-lg object-cover" />}
             <div className="flex-1">
-              <p className="text-sm font-semibold text-matcha-pastel">Selfie added ✓</p>
-              <button onClick={() => remove(selfie.id)} className="press text-xs text-sediment underline underline-offset-2">Retake</button>
+              {face === "checking" && <p className="text-sm font-semibold text-khaki">Checking it&apos;s you…</p>}
+              {face === "matched" && (
+                <>
+                  <p className="text-sm font-semibold text-matcha-pastel">Matched ✓ — it&apos;s you</p>
+                  <p className="text-xs text-sediment">Your selfie stays private. Nobody else sees it.</p>
+                </>
+              )}
+              {face === "mismatch" && (
+                <>
+                  <p className="text-sm font-semibold text-spice-pastel">We couldn&apos;t match this to your photos</p>
+                  <p className="text-xs text-sediment">
+                    Retake it, or keep it — if you keep it, others will see it so they know you&apos;re real.
+                  </p>
+                </>
+              )}
+              {face === "idle" && <p className="text-sm font-semibold text-crema">Selfie added</p>}
+              <button onClick={() => { setFace("idle"); remove(selfie.id); }} className="press mt-1 text-xs text-butter underline underline-offset-2">
+                Retake selfie
+              </button>
             </div>
           </div>
         ) : (
-          <SelfieCapture onDone={load} setErr={setErr} />
+          <SelfieCapture onDone={() => { setFace("idle"); load(); }} setErr={setErr} />
         )}
       </div>
 

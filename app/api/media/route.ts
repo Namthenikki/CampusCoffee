@@ -115,6 +115,23 @@ export async function POST(req: Request) {
     return json({ ok: true });
   }
 
+  // Phase 3 — the browser ran the face match; record its verdict.
+  if (body.step === "faceresult") {
+    const matched = !!body.matched;
+    await supabaseAdmin()
+      .from("profiles")
+      .update({
+        photos_verified: matched,
+        photos_verified_at: new Date().toISOString(),
+        face_match_score: typeof body.score === "number" ? body.score : null,
+        // A confirmed match keeps the selfie private; anything else shows it to
+        // others so they can decide for themselves.
+        selfie_public: !matched,
+      })
+      .eq("id", me.id);
+    return json({ ok: true });
+  }
+
   return json({ error: "Unknown step" }, { status: 400 });
 }
 

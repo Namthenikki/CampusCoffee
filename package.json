@@ -10,6 +10,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.8",
+    "@vladmandic/face-api": "^1.7.15",
     "aws4fetch": "^1.0.20",
     "next": "16",
     "react": "19",
