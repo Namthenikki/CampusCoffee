@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import TabBar from "@/components/TabBar";
-import { api, Avatar, Btn, Chip, Empty, Sheet, Token } from "@/components/ui";
+import { api, Avatar, Btn, Chip, Empty, Seg, Sheet, Token } from "@/components/ui";
 
 type Candidate = {
   user: { id: string; name: string; branch: string | null; year: number | null; hostel: string; diet: string; messSlot: string; mealFreq: number };
@@ -18,8 +18,58 @@ type Post = {
 const SLOT_LABEL: Record<string, string> = { early: "Early bird", mid: "Regular", late: "Last call" };
 const DIET_LABEL: Record<string, string> = { veg: "Veg", egg: "Egg", nonveg: "Non-veg" };
 
+// The mess-only questions, asked the first time someone opens this pool rather
+// than up front. Filling them in is what puts a student into mess matching.
+function MessSetup({ me, onReady }: { me: { diet: string; messSlot: string; mealFreq: number }; onReady: (m: { messReady: boolean; diet: string; messSlot: string; mealFreq: number }) => void }) {
+  const [diet, setDiet] = useState(me.diet || "veg");
+  const [messSlot, setMessSlot] = useState(me.messSlot || "mid");
+  const [mealFreq, setMealFreq] = useState(me.mealFreq || 14);
+  const [busy, setBusy] = useState(false);
+
+  const start = async () => {
+    setBusy(true);
+    await api("/api/me", { method: "PATCH", body: JSON.stringify({ diet, messSlot, mealFreq, messReady: true }) });
+    onReady({ messReady: true, diet, messSlot, mealFreq });
+  };
+
+  return (
+    <main className="flex min-h-dvh flex-col gap-5 px-5 pb-24 pt-8">
+      <div>
+        <p className="serial">MESS PARTNER</p>
+        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">Never eat alone 🍛</h1>
+        <p className="mt-2 text-sm leading-relaxed text-khaki">
+          A few quick things so we only pair you with people you&apos;d actually share a table with.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <label className="text-sm text-khaki">Plate politics</label>
+        <Seg
+          options={[{ value: "veg", label: "Veg" }, { value: "egg", label: "Egg" }, { value: "nonveg", label: "Non-veg" }]}
+          value={diet as "veg"} onChange={setDiet}
+        />
+        <label className="text-sm text-khaki">When do you usually eat?</label>
+        <Seg
+          options={[{ value: "early", label: "Early bird" }, { value: "mid", label: "Regular" }, { value: "late", label: "Last call" }]}
+          value={messSlot as "mid"} onChange={setMessSlot}
+        />
+        <label className="text-sm text-khaki">Mess meals per week: <span className="font-mono text-honey">{mealFreq}</span></label>
+        <input type="range" min={0} max={21} value={mealFreq} onChange={(e) => setMealFreq(Number(e.target.value))} className="accent-honey" />
+      </div>
+
+      <div className="mt-auto">
+        <Btn full onClick={start} disabled={busy}>{busy ? "One sec…" : "Find my mess partners"}</Btn>
+      </div>
+      <TabBar />
+    </main>
+  );
+}
+
+type Me = { messReady: boolean; diet: string; messSlot: string; mealFreq: number };
+
 export default function Mess() {
   const router = useRouter();
+  const [me, setMe] = useState<Me | null>(null);
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -28,10 +78,21 @@ export default function Mess() {
   const [slotLabel, setSlotLabel] = useState("tonight's dinner");
 
   const load = useCallback(() => {
-    api<{ candidates: Candidate[] }>("/api/mess/candidates").then(({ candidates }) => setCandidates(candidates)).catch(() => router.replace("/welcome"));
+    api<{ candidates: Candidate[] }>("/api/mess/candidates").then(({ candidates }) => setCandidates(candidates)).catch(() => {});
     api<{ posts: Post[] }>("/api/posts?kind=mess").then(({ posts }) => setPosts(posts)).catch(() => {});
-  }, [router]);
-  useEffect(load, [load]);
+  }, []);
+
+  // Check whether they've done the one-time mess setup before loading the pool.
+  useEffect(() => {
+    api<{ me: Me }>("/api/me")
+      .then(({ me }) => { setMe(me); if (me.messReady) load(); })
+      .catch(() => router.replace("/welcome"));
+  }, [load, router]);
+
+  // First visit to the Mess pool: ask the mess-only questions, once.
+  if (me && !me.messReady) {
+    return <MessSetup me={me} onReady={(next) => { setMe(next); load(); }} />;
+  }
 
   const pair = async (userId: string) => {
     const { matchId } = await api<{ matchId: string }>("/api/mess/match", { method: "POST", body: JSON.stringify({ userId }) });

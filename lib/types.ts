@@ -31,6 +31,7 @@ export interface User {
   studyStyle: StudyStyle;
   prompt: { q: string; a: string } | null;
   timetable: boolean[][]; // [day][slot] — true means FREE
+  messReady: boolean;
   examMode: boolean;
   blindOptIn: boolean;
   openOptIn: boolean;

@@ -18,11 +18,11 @@ type Me = {
 };
 type Pools = { interests: string[]; subjects: string[]; prompts: string[] };
 
-const STEPS = ["you", "mess", "interests", "study", "timetable", "coffee"] as const;
+const STEPS = ["you", "interests", "study", "timetable", "coffee"] as const;
 
 // Each wizard step answers in its feature's drink (COLOR-RESEARCH: one family per screen).
 const STEP_FILL: Record<(typeof STEPS)[number], string> = {
-  you: "bg-honey", mess: "bg-honey", interests: "bg-honey",
+  you: "bg-honey", interests: "bg-honey",
   study: "bg-matcha", timetable: "bg-matcha", coffee: "bg-rosemilk",
 };
 
@@ -263,24 +263,6 @@ export default function Welcome() {
               </button>
             ))}
           </div>
-        </section>
-      )}
-
-      {STEPS[step] === "mess" && (
-        <section className="flex flex-col gap-4">
-          <h2 className="font-display text-2xl font-bold tracking-tight">Mess rules</h2>
-          <label className="text-sm text-khaki">Plate politics</label>
-          <Seg
-            options={[{ value: "veg", label: "Veg" }, { value: "egg", label: "Egg" }, { value: "nonveg", label: "Non-veg" }]}
-            value={me.diet as "veg"} onChange={(v) => patch({ diet: v })}
-          />
-          <label className="text-sm text-khaki">When do you usually eat?</label>
-          <Seg
-            options={[{ value: "early", label: "Early bird" }, { value: "mid", label: "Regular" }, { value: "late", label: "Last call" }]}
-            value={me.messSlot as "mid"} onChange={(v) => patch({ messSlot: v })}
-          />
-          <label className="text-sm text-khaki">Mess meals per week: <span className="font-mono text-butter">{me.mealFreq}</span></label>
-          <input type="range" min={0} max={21} value={me.mealFreq} onChange={(e) => patch({ mealFreq: Number(e.target.value) })} className="accent-honey" />
         </section>
       )}
 

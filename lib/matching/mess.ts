@@ -35,7 +35,7 @@ export function messCandidates(me: User, all: User[], matches: Match[]): MessCan
   );
 
   return all
-    .filter((u) => u.id !== me.id && u.onboarded && !alreadyActive.has(u.id))
+    .filter((u) => u.id !== me.id && u.onboarded && u.messReady && !alreadyActive.has(u.id))
     // HARD FILTERS — excluded entirely, not ranked low
     .filter((u) => u.messSlot === me.messSlot)
     .filter((u) => dietCompatible(me, u))
