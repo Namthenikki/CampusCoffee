@@ -59,8 +59,8 @@ export async function POST(req: Request) {
 
     const ext = String(body.ext ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 4);
     const key = storageKey(me.id, kind, ext);
-    const url = await signedUploadUrl(key);
-    return json({ key, url });
+    const signed = await signedUploadUrl(key);
+    return json({ key, ...signed });
   }
 
   // Phase 2 — the upload finished; record it.

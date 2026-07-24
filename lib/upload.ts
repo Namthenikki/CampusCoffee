@@ -63,12 +63,12 @@ export async function uploadMedia(
   meta: { width?: number; height?: number; durationMs?: number; hasFace?: boolean },
 ): Promise<void> {
   const ext = kind === "reel" ? "mp4" : "jpg";
-  const { url, key } = await api<{ url: string; key: string }>("/api/media", {
+  const { url, key, method } = await api<{ url: string; key: string; method: "PUT" | "POST" }>("/api/media", {
     method: "POST",
     body: JSON.stringify({ step: "sign", kind, ext }),
   });
 
-  const put = await fetch(url, { method: "PUT", body: blob, headers: { "content-type": blob.type } });
+  const put = await fetch(url, { method: method ?? "PUT", body: blob, headers: { "content-type": blob.type } });
   if (!put.ok) throw new Error("Upload failed — check your connection and try again");
 
   await api("/api/media", {

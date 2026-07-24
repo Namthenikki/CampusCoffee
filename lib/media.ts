@@ -1,5 +1,6 @@
 import "server-only";
 import { AwsClient } from "aws4fetch";
+import { supabaseAdmin } from "./supabase/admin";
 
 // Media limits. Enforced here as well as in the UI, because the API is
 // reachable without the form.
@@ -8,39 +9,38 @@ export const MIN_PHOTOS = 3;
 export const MAX_REEL_MS = 30_000;
 export const MAX_PHOTO_BYTES = 1_500_000; // ~1.5 MB after client-side downscaling
 export const MAX_REEL_BYTES = 15_000_000; // ~15 MB for 30 seconds
+export const BUCKET = "media";
 export type MediaKind = "photo" | "reel" | "selfie";
 
-// ---- Cloudflare R2 (S3-compatible) ----
+// ---- Storage backend ----
 //
-// Chosen over Supabase Storage for one reason: egress. Supabase's free tier
-// bills 5 GB of downloads a month, and a photo feed spends egress far faster
-// than it spends storage — a hundred students browsing profiles would exhaust
-// it in days and photos would stop loading for everyone. R2 charges nothing for
-// egress, ever, and gives 10 GB free.
+// Two backends behind one interface. Supabase Storage is the default because it
+// needs no card and its access control lives with the rest of the data. Its
+// only weakness is egress — the free tier bills 5 GB of downloads a month, and
+// a photo feed spends egress faster than storage. Cloudflare R2 charges nothing
+// for egress, so the moment R2 credentials are present we use it instead.
 //
-// The bucket is PRIVATE. Bytes move over short-lived presigned URLs only, so a
-// face can't be pulled out of storage by anyone we didn't hand a URL to — which
-// matters because a public URL would outlive the checks that decide who may see
-// a blind-coffee partner before the reveal.
+// Either way the bucket is PRIVATE and reads are short-lived signed URLs, so a
+// face can't be pulled from storage before a blind match reveals — a public URL
+// would outlive that check.
 
-const ACCOUNT = process.env.R2_ACCOUNT_ID ?? "";
-const BUCKET = process.env.R2_BUCKET ?? "campus-media";
-const ENDPOINT = `https://${ACCOUNT}.r2.cloudflarestorage.com`;
+const R2_ON = !!process.env.R2_ACCOUNT_ID && !!process.env.R2_ACCESS_KEY_ID;
+const R2_BUCKET = process.env.R2_BUCKET ?? "campus-media";
+const R2_ENDPOINT = `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 
-let client: AwsClient | null = null;
+let r2client: AwsClient | null = null;
 function r2(): AwsClient {
-  if (!client) {
-    client = new AwsClient({
+  if (!r2client) {
+    r2client = new AwsClient({
       accessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
       secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
       service: "s3",
       region: "auto",
     });
   }
-  return client;
+  return r2client;
 }
-
-const objectUrl = (key: string) => `${ENDPOINT}/${BUCKET}/${key.split("/").map(encodeURIComponent).join("/")}`;
+const r2Url = (key: string) => `${R2_ENDPOINT}/${R2_BUCKET}/${key.split("/").map(encodeURIComponent).join("/")}`;
 
 export function storageKey(userId: string, kind: MediaKind, ext: string): string {
   const stamp = Date.now().toString(36);
@@ -49,23 +49,37 @@ export function storageKey(userId: string, kind: MediaKind, ext: string): string
 }
 
 /** A short-lived URL the browser PUTs straight to, so bytes never pass through us. */
-export async function signedUploadUrl(key: string): Promise<string> {
-  const signed = await r2().sign(new Request(`${objectUrl(key)}?X-Amz-Expires=600`, { method: "PUT" }), {
-    aws: { signQuery: true },
-  });
-  return signed.url;
+export async function signedUploadUrl(key: string): Promise<{ url: string; method: "PUT" | "POST"; fields?: Record<string, string> }> {
+  if (R2_ON) {
+    const signed = await r2().sign(new Request(`${r2Url(key)}?X-Amz-Expires=600`, { method: "PUT" }), {
+      aws: { signQuery: true },
+    });
+    return { url: signed.url, method: "PUT" };
+  }
+  const { data, error } = await supabaseAdmin().storage.from(BUCKET).createSignedUploadUrl(key);
+  if (error) throw new Error(error.message);
+  return { url: data.signedUrl, method: "PUT" };
 }
 
 /** A short-lived read URL. Never public — expiry is the point. */
 export async function signedReadUrl(key: string, seconds = 3600): Promise<string | null> {
-  const signed = await r2().sign(new Request(`${objectUrl(key)}?X-Amz-Expires=${seconds}`, { method: "GET" }), {
-    aws: { signQuery: true },
-  });
-  return signed.url;
+  if (R2_ON) {
+    const signed = await r2().sign(new Request(`${r2Url(key)}?X-Amz-Expires=${seconds}`, { method: "GET" }), {
+      aws: { signQuery: true },
+    });
+    return signed.url;
+  }
+  const { data } = await supabaseAdmin().storage.from(BUCKET).createSignedUrl(key, seconds);
+  return data?.signedUrl ?? null;
 }
 
 export async function deleteObjects(keys: string[]): Promise<void> {
-  await Promise.all(keys.map((k) => r2().fetch(objectUrl(k), { method: "DELETE" }).catch(() => {})));
+  if (!keys.length) return;
+  if (R2_ON) {
+    await Promise.all(keys.map((k) => r2().fetch(r2Url(k), { method: "DELETE" }).catch(() => {})));
+    return;
+  }
+  await supabaseAdmin().storage.from(BUCKET).remove(keys);
 }
 
 /**
